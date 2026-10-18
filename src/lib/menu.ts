@@ -94,11 +94,7 @@ export async function pickPoster() {
   return result.assets[0];
 }
 
-export async function uploadPoster(
-  orgId: string,
-  eventId: string,
-  asset: { uri: string; width: number },
-) {
+export async function uploadPoster(orgId: string, eventId: string, asset: { uri: string; width: number }) {
   const context = ImageManipulator.manipulate(asset.uri);
   if (asset.width > 1600) context.resize({ width: 1600 });
   const rendered = await context.renderAsync();
@@ -161,11 +157,11 @@ export function useEvent(id?: string) {
       const dishes = (data.menu_dishes as unknown as RawDish[])
         .map(({ dish_ingredients, ...d }) => ({ ...d, ingredients: dish_ingredients[0]?.count ?? 0 }))
         .sort(
-        (a, b) =>
-          order.indexOf(a.section) - order.indexOf(b.section) ||
-          a.position - b.position ||
-          a.name.localeCompare(b.name, 'it'),
-      );
+          (a, b) =>
+            order.indexOf(a.section) - order.indexOf(b.section) ||
+            a.position - b.position ||
+            a.name.localeCompare(b.name, 'it'),
+        );
       return { ...data, dishes };
     },
   });
@@ -260,10 +256,7 @@ export function useDeleteEvent(orgId?: string, eventId?: string) {
   const invalidate = useInvalidateMenu();
   return useMutation({
     mutationFn: async () => {
-      const { error, count } = await supabase
-        .from('events')
-        .delete({ count: 'exact' })
-        .eq('id', eventId!);
+      const { error, count } = await supabase.from('events').delete({ count: 'exact' }).eq('id', eventId!);
       if (error) throw error;
       if (count === 0) {
         throw new Error('Può eliminarlo chi l’ha creato o un amministratore.');
@@ -434,7 +427,8 @@ export function fixedPriceLine(m: {
   fixed_price_note?: string | null;
 }) {
   if (m.price_mode !== 'fisso') return null;
-  const price = m.fixed_price_cents != null ? `${formatEuro(m.fixed_price_cents)} a persona` : 'prezzo da definire';
+  const price =
+    m.fixed_price_cents != null ? `${formatEuro(m.fixed_price_cents)} a persona` : 'prezzo da definire';
   return [`Menù fisso ${price}`, m.fixed_price_note].filter(Boolean).join(' · ');
 }
 
@@ -487,14 +481,50 @@ const BRAND = {
 type Density = 'ampio' | 'medio' | 'compatto' | 'colonne' | 'lungo';
 
 const ONE_COLUMN = {
-  ampio:    { base: 496, section: 42.5, dish: 34.1, descLine: 18.3, fixed: 178.5, descChars: 95,  titleChars: 28, titleLine: 47 },
-  medio:    { base: 455, section: 34.9, dish: 28.3, descLine: 18.3, fixed: 152,   descChars: 102, titleChars: 33, titleLine: 40 },
-  compatto: { base: 421, section: 29.6, dish: 23.7, descLine: 17.3, fixed: 133.1, descChars: 110, titleChars: 38, titleLine: 35 },
+  ampio: {
+    base: 496,
+    section: 42.5,
+    dish: 34.1,
+    descLine: 18.3,
+    fixed: 178.5,
+    descChars: 95,
+    titleChars: 28,
+    titleLine: 47,
+  },
+  medio: {
+    base: 455,
+    section: 34.9,
+    dish: 28.3,
+    descLine: 18.3,
+    fixed: 152,
+    descChars: 102,
+    titleChars: 33,
+    titleLine: 40,
+  },
+  compatto: {
+    base: 421,
+    section: 29.6,
+    dish: 23.7,
+    descLine: 17.3,
+    fixed: 133.1,
+    descChars: 110,
+    titleChars: 38,
+    titleLine: 35,
+  },
 } as const;
 
 const TWO_COLUMNS = {
-  head: 288, fixed: 133, foot: 128, titleChars: 38, titleLine: 35,
-  bodyBase: 2.4, section: 12.2, dish: 14.5, descLine: 9.6, descChars: 52, slack: 30,
+  head: 288,
+  fixed: 133,
+  foot: 128,
+  titleChars: 38,
+  titleLine: 35,
+  bodyBase: 2.4,
+  section: 12.2,
+  dish: 14.5,
+  descLine: 9.6,
+  descChars: 52,
+  slack: 30,
 } as const;
 
 const PAGE_PX = (295 * 96) / 25.4 - 30;
@@ -536,13 +566,22 @@ function chooseDensity(m: MenuForOutput): Density {
 
 const SIZES: Record<
   Density,
-  { logo: string; title: number; dish: number; desc: number; sectionGap: number; dishGap: number; badge: number; gap: number }
+  {
+    logo: string;
+    title: number;
+    dish: number;
+    desc: number;
+    sectionGap: number;
+    dishGap: number;
+    badge: number;
+    gap: number;
+  }
 > = {
-  ampio:    { logo: '58%', title: 34, dish: 14.5, desc: 10.5, sectionGap: 7,   dishGap: 3.2, badge: 34, gap: 5 },
-  medio:    { logo: '48%', title: 29, dish: 13,   desc: 9.8,  sectionGap: 5,   dishGap: 2.2, badge: 28, gap: 4 },
-  compatto: { logo: '40%', title: 25, dish: 12,   desc: 9.2,  sectionGap: 3.6, dishGap: 1.5, badge: 24, gap: 3 },
-  colonne:  { logo: '40%', title: 25, dish: 11.5, desc: 9,    sectionGap: 4,   dishGap: 1.6, badge: 24, gap: 3 },
-  lungo:    { logo: '36%', title: 24, dish: 11.5, desc: 9,    sectionGap: 4.5, dishGap: 1.6, badge: 22, gap: 3 },
+  ampio: { logo: '58%', title: 34, dish: 14.5, desc: 10.5, sectionGap: 7, dishGap: 3.2, badge: 34, gap: 5 },
+  medio: { logo: '48%', title: 29, dish: 13, desc: 9.8, sectionGap: 5, dishGap: 2.2, badge: 28, gap: 4 },
+  compatto: { logo: '40%', title: 25, dish: 12, desc: 9.2, sectionGap: 3.6, dishGap: 1.5, badge: 24, gap: 3 },
+  colonne: { logo: '40%', title: 25, dish: 11.5, desc: 9, sectionGap: 4, dishGap: 1.6, badge: 24, gap: 3 },
+  lungo: { logo: '36%', title: 24, dish: 11.5, desc: 9, sectionGap: 4.5, dishGap: 1.6, badge: 22, gap: 3 },
 };
 
 export function menuHtml(m: MenuForOutput) {

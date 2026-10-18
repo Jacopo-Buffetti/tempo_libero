@@ -17,7 +17,6 @@ export const styles = StyleSheet.create({
   backText: { fontFamily: font.bold, fontSize: 15, color: colors.accent },
   content: { padding: space(5), gap: space(5) },
   field: { gap: space(2) },
-  twoCols: { flexDirection: 'row', gap: space(2) },
   input: {
     minHeight: 50,
     borderRadius: radius.md,
@@ -29,9 +28,7 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
-  time: { width: 130 },
   multiline: { minHeight: 90, paddingTop: space(3), textAlignVertical: 'top', fontFamily: font.medium },
-  inputBad: { borderColor: colors.warn, borderWidth: 2 },
   posterRow: { flexDirection: 'row', alignItems: 'center', gap: space(4) },
   poster: { width: 120, height: 160, borderRadius: 10 },
   posterEmpty: {

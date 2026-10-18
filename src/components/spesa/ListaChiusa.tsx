@@ -1,33 +1,25 @@
-import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { formatQty, locationLabel } from '@/lib/items';
 import {
-  centsToInput,
   dateFromIso,
   formatEuro,
-  parseEuro,
+  listLocations,
+  locationsLabel,
   useListItems,
-  useSetListItemPrice,
-  useSetReimbursed,
+  usePayerLabel,
+  useRuns,
   type ListSummary,
 } from '@/lib/spesa';
 import { useAuth, useMembership } from '@/providers/AuthProvider';
-import { colors, type } from '@/theme/tokens';
 import { closedListText, shareAnywhere, shareOnWhatsApp } from '@/lib/condividiLista';
+import { RunCard } from '@/components/spesa/RunCard';
+import { colors, type } from '@/theme/tokens';
 import { styles } from '@/styles/components/listaChiusa';
+
+const shortDate = (iso: string) =>
+  dateFromIso(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
 
 export function ListaChiusa({ list }: { list: ListSummary }) {
   const { session } = useAuth();
@@ -36,82 +28,34 @@ export function ListaChiusa({ list }: { list: ListSummary }) {
   const listId = list.id!;
 
   const items = useListItems(listId);
-  const setPrice = useSetListItemPrice(listId);
-  const setReimbursed = useSetReimbursed(listId);
+  const runs = useRuns(listId);
+  const payerLabel = usePayerLabel(orgId, session?.user.id);
 
-  const members = useQuery({
-    queryKey: ['members', orgId],
-    enabled: !!orgId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('members')
-        .select('user_id, display_name')
-        .eq('org_id', orgId!);
-      if (error) throw error;
-      return data;
-    },
-  });
+  const runList = runs.data ?? [];
+  const bought = (items.data ?? []).filter((i) => i.checked);
+  const total = runList.reduce((sum, r) => sum + r.total_cents, 0);
+  const toRefund = runList
+    .filter((r) => r.paid_by === 'volontario' && !r.reimbursed)
+    .reduce((sum, r) => sum + r.total_cents, 0);
+  const warnings = runList.reduce((sum, r) => sum + r.receipts_missing + r.prices_missing, 0);
 
-  const lines = (items.data ?? [])
-    .filter((i) => i.checked)
-    .sort((a, b) => a.name.localeCompare(b.name, 'it'));
-
-  const [prices, setPrices] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    setPrices((current) => {
-      const next = { ...current };
-      (items.data ?? []).forEach((l) => {
-        if (next[l.id] === undefined) next[l.id] = centsToInput(l.price_cents);
-      });
-      return next;
-    });
-  }, [items.data]);
-
-  function commit(id: string, saved: number | null) {
-    const text = prices[id] ?? '';
-    const cents = parseEuro(text);
-    if (text.trim() !== '' && cents == null) {
-      setError('Prezzo non valido: usa un formato come 6,90');
-      return;
-    }
-    setError(null);
-    if (cents !== saved) {
-      setPrice.mutate(
-        { id, cents },
-        { onError: () => setError('Prezzo non salvato. Controlla la connessione e riprova.') },
-      );
-    }
-  }
-
-  const current = lines.map((l) =>
-    prices[l.id] === undefined ? l.price_cents : parseEuro(prices[l.id]),
-  );
-  const total = current.reduce<number>((s, c) => s + (c ?? 0), 0);
-  const missing = current.filter((c) => c == null).length;
-
-  const payer =
-    list.paid_by === 'cassa'
-      ? 'Cassa Pro Loco'
-      : list.paid_by_user === session?.user.id
-        ? 'Anticipata da te'
-        : `Anticipata da ${
-            members.data?.find((m) => m.user_id === list.paid_by_user)?.display_name ??
-            'un volontario'
-          }`;
-
-  const payerName =
-    list.paid_by === 'cassa'
-      ? 'cassa Pro Loco'
-      : `anticipato da ${
-          members.data?.find((m) => m.user_id === list.paid_by_user)?.display_name ?? 'un volontario'
-        }${list.reimbursed ? ' (rimborsato)' : ' (da rimborsare)'}`;
+  const first = runList[0]?.run_date;
+  const last = runList[runList.length - 1]?.run_date;
+  const period =
+    first && last
+      ? first === last
+        ? shortDate(first)
+        : `dal ${shortDate(first)} al ${shortDate(last)}`
+      : '';
 
   const shareText = () =>
     closedListText(
-      { name: list.name!, location: list.location!, shop: list.shop, closed_on: list.closed_on },
-      items.data ?? [],
-      payerName,
+      { name: list.name!, locations: listLocations(list) },
+      runList.map((run) => ({
+        run,
+        payer: payerLabel(run.paid_by, run.paid_by_user),
+        items: bought.filter((i) => i.run_id === run.id),
+      })),
     );
 
   function share() {
@@ -121,14 +65,6 @@ export function ListaChiusa({ list }: { list: ListSummary }) {
   function shareElsewhere() {
     shareAnywhere(shareText()).catch(() => undefined);
   }
-
-  const day = list.closed_on
-    ? dateFromIso(list.closed_on).toLocaleDateString('it-IT', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-      })
-    : '';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -160,101 +96,44 @@ export function ListaChiusa({ list }: { list: ListSummary }) {
         </View>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
             <Text style={type.title}>{list.name}</Text>
             <Text style={type.caption}>
-              {[day.charAt(0).toUpperCase() + day.slice(1), list.shop, locationLabel(list.location!)]
-                .filter(Boolean)
-                .join(' · ')}
+              {[period, locationsLabel(listLocations(list))].filter(Boolean).join(' · ')}
             </Text>
           </View>
 
           <View style={styles.totalCard}>
             <View style={styles.flex}>
-              <Text style={type.label}>Totale</Text>
-              {missing > 0 && (
-                <Text style={[type.caption, { color: colors.warn }]}>
-                  {missing === 1 ? '1 prezzo da inserire' : `${missing} prezzi da inserire`}
-                </Text>
+              <Text style={type.label}>
+                Totale · {runList.length} {runList.length === 1 ? 'spesa' : 'spese'}
+              </Text>
+              {warnings > 0 && (
+                <Text style={[type.caption, styles.warnText]}>Alcuni importi da completare</Text>
+              )}
+              {toRefund > 0 && (
+                <Text style={[type.caption, styles.warnText]}>Da rimborsare: {formatEuro(toRefund)}</Text>
               )}
             </View>
             <Text style={styles.total}>{formatEuro(total)}</Text>
           </View>
 
-          <View style={styles.payCard}>
-            <Ionicons
-              name={list.paid_by === 'cassa' ? 'wallet-outline' : 'person-outline'}
-              size={20}
-              color={colors.text}
-            />
-            <View style={styles.flex}>
-              <Text style={type.body}>{payer}</Text>
-              {list.paid_by === 'volontario' && (
-                <Text style={[type.caption, !list.reimbursed && { color: colors.warn }]}>
-                  {list.reimbursed ? 'Già rimborsata' : 'Da rimborsare'}
-                </Text>
-              )}
-            </View>
-            {list.paid_by === 'volontario' && (
-              <Pressable
-                onPress={() => setReimbursed.mutate(!list.reimbursed)}
-                disabled={setReimbursed.isPending}
-                style={({ pressed }) => [
-                  styles.refundButton,
-                  list.reimbursed && styles.refundUndo,
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Text style={[styles.refundText, list.reimbursed && { color: colors.text }]}>
-                  {list.reimbursed ? 'Annulla' : 'Rimborsata'}
-                </Text>
-              </Pressable>
-            )}
+          <View style={styles.runs}>
+            {runList.map((run, index) => (
+              <RunCard
+                key={run.id}
+                run={run}
+                index={index}
+                listId={listId}
+                orgId={orgId}
+                items={bought.filter((i) => i.run_id === run.id)}
+                payerName={payerLabel(run.paid_by, run.paid_by_user)}
+                initiallyOpen={runList.length === 1}
+              />
+            ))}
           </View>
-
-          <View style={styles.field}>
-            <Text style={type.label}>Comprati · {lines.length}</Text>
-            <View style={styles.card}>
-              {lines.map((l, i) => {
-                const text = prices[l.id] ?? '';
-                const bad = text.trim() !== '' && parseEuro(text) == null;
-                const empty = text.trim() === '';
-                return (
-                  <View key={l.id} style={[styles.line, i < lines.length - 1 && styles.divider]}>
-                    <View style={styles.flex}>
-                      <Text style={type.body} numberOfLines={1}>{l.name}</Text>
-                      <Text style={type.caption}>
-                        {formatQty(l.qty)} {l.unit}
-                        {l.item_id ? ' · in inventario' : ''}
-                      </Text>
-                      {!!l.note && <Text style={styles.note}>{l.note}</Text>}
-                    </View>
-                    <View style={[styles.priceBox, empty && styles.priceMissing, bad && styles.priceBad]}>
-                      <Text style={styles.euro}>€</Text>
-                      <TextInput
-                        value={text}
-                        onChangeText={(v) => setPrices((p) => ({ ...p, [l.id]: v }))}
-                        onEndEditing={() => commit(l.id, l.price_cents)}
-                        placeholder="0,00"
-                        placeholderTextColor={colors.placeholder}
-                        keyboardType="decimal-pad"
-                        accessibilityLabel={`Prezzo di ${l.name}`}
-                        style={styles.priceInput}
-                      />
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-            <Text style={type.caption}>I prezzi si salvano appena chiudi la tastiera.</Text>
-          </View>
-
-          {error && <Text style={styles.error}>{error}</Text>}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

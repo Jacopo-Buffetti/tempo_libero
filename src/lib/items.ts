@@ -61,8 +61,23 @@ export function parseQty(text: string, unit = 'pezzi'): number | null {
   return d === 0 ? Math.round(n) : roundQty(n);
 }
 
+const UNIT_FORMS: Record<string, [string, string]> = {
+  pezzi: ['pezzo', 'pezzi'],
+  confezioni: ['confezione', 'confezioni'],
+  bottiglie: ['bottiglia', 'bottiglie'],
+  rotoli: ['rotolo', 'rotoli'],
+  casse: ['cassa', 'casse'],
+  litri: ['litro', 'litri'],
+};
+
+export const unitWord = (qty: number | null | undefined, unit: string) => {
+  const forms = UNIT_FORMS[unit];
+  if (!forms) return unit;
+  return Number(qty) === 1 ? forms[0] : forms[1];
+};
+
 export const qtyWithUnit = (n: number | null | undefined, unit: string) =>
-  `${formatQty(n)} ${unit}`;
+  `${formatQty(n)} ${unitWord(n, unit)}`;
 
 export const available = (i: Item) => i.qty - i.broken_qty;
 

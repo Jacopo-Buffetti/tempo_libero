@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { formatQty, itemNote, locationLabel, stepFor, type Item } from '@/lib/items';
+import { formatQty, itemNote, locationLabel, stepFor, type Item, unitWord } from '@/lib/items';
 import { colors, type } from '@/theme/tokens';
 import { styles } from '@/styles/components/itemRow';
 
@@ -14,15 +14,7 @@ type Props = {
   onPress?: () => void;
 };
 
-export function ItemRow({
-  item,
-  isFirst,
-  isLast,
-  onAdjust,
-  showLocation,
-  highlight,
-  onPress,
-}: Props) {
+export function ItemRow({ item, isFirst, isLast, onAdjust, showLocation, highlight, onPress }: Props) {
   const note = itemNote(item);
   const step = stepFor(item.unit);
   const cantRemove = item.qty - step < item.broken_qty;
@@ -55,9 +47,7 @@ export function ItemRow({
       <View style={styles.text}>
         <Name name={item.name} highlight={highlight} />
         <View style={styles.meta}>
-          {showLocation && (
-            <Text style={styles.place}>{locationLabel(item.location)}</Text>
-          )}
+          {showLocation && <Text style={styles.place}>{locationLabel(item.location)}</Text>}
           <Text style={[type.caption, note.alert && { color: colors.warn }]} numberOfLines={1}>
             {note.text}
           </Text>
@@ -81,7 +71,7 @@ export function ItemRow({
 
       <View style={styles.qty}>
         <Text style={[type.number, note.alert && { color: colors.warn }]}>{formatQty(item.qty)}</Text>
-        <Text style={styles.unit}>{item.unit}</Text>
+        <Text style={styles.unit}>{unitWord(item.qty, item.unit)}</Text>
       </View>
 
       {onAdjust && (
@@ -102,7 +92,11 @@ function Name({ name, highlight }: { name: string; highlight?: string }) {
   const at = term ? name.toLowerCase().indexOf(term.toLowerCase()) : -1;
 
   if (!term || at < 0) {
-    return <Text style={type.body} numberOfLines={1}>{name}</Text>;
+    return (
+      <Text style={type.body} numberOfLines={1}>
+        {name}
+      </Text>
+    );
   }
 
   return (

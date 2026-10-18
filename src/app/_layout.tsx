@@ -49,6 +49,15 @@ function RootNavigator() {
           <Stack.Screen name="menu/[id]" />
           <Stack.Screen name="menu/piatto" options={{ presentation: 'modal' }} />
           <Stack.Screen name="menu/modifica/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="calendario/turno/[date]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="calendario/genera" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="calendario/esporta" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="calendario/consiglieri" />
+          <Stack.Screen name="calendario/affitto" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="calendario/contratto" />
+          <Stack.Screen name="calendario/verbale" />
+          <Stack.Screen name="calendario/clienti" />
+          <Stack.Screen name="calendario/cliente/[id]" />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="login" />

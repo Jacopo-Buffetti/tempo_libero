@@ -1,0 +1,26 @@
+import { StyleSheet } from 'react-native';
+import { colors, font, radius, space, touch } from '@/theme/tokens';
+
+export const styles = StyleSheet.create({
+  wrap: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: space(2.5), gap: space(1.5) },
+  nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  navButton: { width: touch, height: touch, alignItems: 'center', justifyContent: 'center' },
+  title: { fontFamily: font.black, fontSize: 17, color: colors.text },
+  row: { flexDirection: 'row' },
+  weekday: { flex: 1, textAlign: 'center', fontFamily: font.bold, fontSize: 12, color: colors.muted },
+  weekdayEnd: { color: colors.warn },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  cell: { width: `${100 / 7}%`, aspectRatio: 0.82, padding: 2 },
+  day: { borderRadius: radius.sm, alignItems: 'center', paddingTop: 4, gap: 1 },
+  dayMuted: { backgroundColor: colors.bg },
+  dayHighlight: { backgroundColor: colors.sunSoft },
+  daySelected: { backgroundColor: colors.accent },
+  number: { fontFamily: font.bold, fontSize: 14, color: colors.text },
+  numberMuted: { color: colors.placeholder },
+  numberSelected: { color: colors.onAccent },
+  today: { color: colors.accent, textDecorationLine: 'underline' },
+  label: { fontFamily: font.bold, fontSize: 9.5, color: colors.accentInk, paddingHorizontal: 1 },
+  labelSelected: { color: colors.onAccent },
+  dots: { flexDirection: 'row', gap: 3, marginTop: 2 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+});

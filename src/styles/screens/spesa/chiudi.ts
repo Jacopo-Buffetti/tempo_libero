@@ -4,6 +4,7 @@ import { colors, font, radius, space, touch } from '@/theme/tokens';
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   centered: { alignItems: 'center', justifyContent: 'center' },
+  empty: { textAlign: 'center', paddingVertical: space(6) },
   flex: { flex: 1 },
   topBar: {
     flexDirection: 'row',

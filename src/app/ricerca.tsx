@@ -1,12 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,12 +48,7 @@ export default function Ricerca() {
     enabled: !!orgId && hasCriteria,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      let query = supabase
-        .from('items')
-        .select(ITEM_COLUMNS)
-        .eq('org_id', orgId!)
-        .order('name')
-        .limit(100);
+      let query = supabase.from('items').select(ITEM_COLUMNS).eq('org_id', orgId!).order('name').limit(100);
       if (term) query = query.ilike('name', `%${escapeLike(term)}%`);
       if (place !== 'tutti') query = query.eq('location', place);
       const { data, error } = await query;
@@ -79,7 +67,7 @@ export default function Ricerca() {
   const count = visible.length === 1 ? '1 risultato' : `${visible.length} risultati`;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <View style={styles.searchRow}>
           <View style={styles.search}>
@@ -131,19 +119,13 @@ export default function Ricerca() {
           <Text style={type.label}>Stato</Text>
           <View style={styles.chips}>
             <Chip label="Sotto scorta" active={onlyLow} onPress={() => setOnlyLow((v) => !v)} />
-            <Chip
-              label="Da riparare"
-              active={onlyRepair}
-              onPress={() => setOnlyRepair((v) => !v)}
-            />
+            <Chip label="Da riparare" active={onlyRepair} onPress={() => setOnlyRepair((v) => !v)} />
           </View>
         </View>
       </View>
 
       {!hasCriteria ? (
-        <Text style={[type.caption, styles.hint]}>
-          Scrivi il nome di un oggetto oppure scegli un filtro.
-        </Text>
+        <Text style={[type.caption, styles.hint]}>Scrivi il nome di un oggetto oppure scegli un filtro.</Text>
       ) : (
         <FlatList
           data={visible}

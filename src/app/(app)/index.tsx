@@ -1,12 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,8 +49,7 @@ export default function Inventario() {
   const lowCount = useMemo(() => all.filter(isLow).length, [all]);
   const repairCount = useMemo(() => all.filter(needsRepair).length, [all]);
   const visible = useMemo(
-    () =>
-      filter === 'scorta' ? all.filter(isLow) : filter === 'riparare' ? all.filter(needsRepair) : all,
+    () => (filter === 'scorta' ? all.filter(isLow) : filter === 'riparare' ? all.filter(needsRepair) : all),
     [all, filter],
   );
 
@@ -74,8 +66,7 @@ export default function Inventario() {
       <SafeAreaView style={[styles.safe, styles.centered]}>
         <Text style={type.heading}>Account non collegato</Text>
         <Text style={[type.caption, styles.centerText]}>
-          Il tuo account non fa ancora parte di una Pro Loco. Chiedi a un amministratore di
-          aggiungerti.
+          Il tuo account non fa ancora parte di una Pro Loco. Chiedi a un amministratore di aggiungerti.
         </Text>
       </SafeAreaView>
     );
@@ -127,9 +118,7 @@ export default function Inventario() {
                 accessibilityState={{ selected: active }}
                 style={[styles.segmentItem, active && styles.segmentItemActive]}
               >
-                <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                  {l.label}
-                </Text>
+                <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{l.label}</Text>
               </Pressable>
             );
           })}

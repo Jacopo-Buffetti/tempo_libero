@@ -15,7 +15,16 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { escapeLike, formatQty, locationLabel, roundQty, stepFor, type Location } from '@/lib/items';
+import {
+  escapeLike,
+  formatQty,
+  locationLabel,
+  roundQty,
+  stepFor,
+  type Location,
+  unitWord,
+  qtyWithUnit,
+} from '@/lib/items';
 import {
   SECTIONS,
   ensureEventList,
@@ -33,8 +42,7 @@ import { Chip } from '@/components/Chip';
 import { colors, type } from '@/theme/tokens';
 import { styles } from '@/styles/screens/menu/piatto';
 
-const isSection = (v: unknown): v is Section =>
-  typeof v === 'string' && SECTIONS.some((s) => s.value === v);
+const isSection = (v: unknown): v is Section => typeof v === 'string' && SECTIONS.some((s) => s.value === v);
 
 type Mode = 'inventory' | 'new-product' | 'list-only';
 
@@ -53,9 +61,7 @@ export default function Piatto() {
   const ingredients = useDishIngredients(dishId);
   const setShare = useSetDishIngredientQty();
 
-  const [section, setSection] = useState<Section>(
-    isSection(params.section) ? params.section : 'primi',
-  );
+  const [section, setSection] = useState<Section>(isSection(params.section) ? params.section : 'primi');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -91,9 +97,7 @@ export default function Piatto() {
       return data;
     },
   });
-  const exactExists = (suggestions.data ?? []).some(
-    (s) => s.name.toLowerCase() === cleanTerm.toLowerCase(),
-  );
+  const exactExists = (suggestions.data ?? []).some((s) => s.name.toLowerCase() === cleanTerm.toLowerCase());
 
   const isFixed = event.data?.price_mode === 'fisso';
   const cleanName = name.trim();
@@ -194,10 +198,7 @@ export default function Piatto() {
         <View style={styles.back} />
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.field}>
             <Text style={type.label}>Sezione</Text>
@@ -266,8 +267,8 @@ export default function Piatto() {
               {list.length > 0 && <Text style={type.caption}>{list.length}</Text>}
             </View>
             <Text style={type.caption}>
-              Finiscono subito nella lista della spesa di “{event.data?.name}”. Se un ingrediente
-              con lo stesso nome c’è già (anche per un altro piatto), le quantità si sommano.
+              Finiscono subito nella lista della spesa di “{event.data?.name}”. Se un ingrediente con lo
+              stesso nome c’è già (anche per un altro piatto), le quantità si sommano.
             </Text>
 
             {list.length > 0 && (
@@ -284,7 +285,11 @@ export default function Piatto() {
                         `Togli ${formatQty(ing.qty)} ${ing.shopping_list_items?.unit ?? ''} di “${ing.shopping_list_items?.name}” da questo piatto e dalla lista della spesa.`,
                         [
                           { text: 'Annulla', style: 'cancel' },
-                          { text: 'Togli', style: 'destructive', onPress: () => setShare.mutate({ id: ing.id, qty: 0 }) },
+                          {
+                            text: 'Togli',
+                            style: 'destructive',
+                            onPress: () => setShare.mutate({ id: ing.id, qty: 0 }),
+                          },
                         ],
                       )
                     }
@@ -403,19 +408,19 @@ function IngredientRow({
         </Text>
         {shared && (
           <Text style={styles.shared}>
-            In lista {formatQty(line.qty)} {line.unit} in tutto, serve anche ad altri piatti
+            In lista {qtyWithUnit(line.qty, line.unit)} in tutto, serve anche ad altri piatti
           </Text>
         )}
       </View>
       {line.checked ? (
-        <Text style={styles.qty}>
-          {formatQty(ing.qty)} {line.unit}
-        </Text>
+        <Text style={styles.qty}>{qtyWithUnit(ing.qty, line.unit)}</Text>
       ) : (
         <>
           <Pressable
             onPress={() => (ing.qty - step > 0 ? onChange(roundQty(ing.qty - step)) : onRemove())}
-            accessibilityLabel={ing.qty - step > 0 ? `Togli ${formatQty(step)} ${line.unit}` : 'Togli ingrediente'}
+            accessibilityLabel={
+              ing.qty - step > 0 ? `Togli ${formatQty(step)} ${line.unit}` : 'Togli ingrediente'
+            }
             style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}
           >
             <Ionicons
@@ -426,7 +431,7 @@ function IngredientRow({
           </Pressable>
           <View style={styles.qtyBox}>
             <Text style={styles.qty}>{formatQty(ing.qty)}</Text>
-            <Text style={styles.unit}>{line.unit}</Text>
+            <Text style={styles.unit}>{unitWord(ing.qty, line.unit)}</Text>
           </View>
           <Pressable
             onPress={() => onChange(roundQty(ing.qty + step))}
@@ -460,7 +465,9 @@ function Option({
       style={({ pressed }) => [styles.option, pressed && { backgroundColor: colors.bg }]}
     >
       <Ionicons name={icon} size={18} color={color} />
-      <Text style={[type.body, styles.flex]} numberOfLines={1}>{title}</Text>
+      <Text style={[type.body, styles.flex]} numberOfLines={1}>
+        {title}
+      </Text>
       <Text style={type.caption}>{hint}</Text>
     </Pressable>
   );

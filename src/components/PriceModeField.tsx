@@ -72,9 +72,7 @@ export function PriceModeField({
             placeholderTextColor={colors.muted}
             style={styles.note}
           />
-          <Text style={type.caption}>
-            I piatti vengono mostrati senza prezzo: vale quello del menù.
-          </Text>
+          <Text style={type.caption}>I piatti vengono mostrati senza prezzo: vale quello del menù.</Text>
         </View>
       )}
     </View>

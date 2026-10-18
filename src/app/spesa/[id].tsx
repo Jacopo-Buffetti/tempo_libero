@@ -31,9 +31,5 @@ export default function Lista() {
     );
   }
 
-  return list.data.status === 'aperta' ? (
-    <ListaAperta list={list.data} />
-  ) : (
-    <ListaChiusa list={list.data} />
-  );
+  return list.data.status === 'aperta' ? <ListaAperta list={list.data} /> : <ListaChiusa list={list.data} />;
 }

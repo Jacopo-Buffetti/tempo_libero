@@ -37,6 +37,7 @@ export const styles = StyleSheet.create({
   searchInput: { flex: 1, fontFamily: font.bold, fontSize: 15, color: colors.text, padding: 0 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space(2) },
   match: { fontFamily: font.bold, fontSize: 13, color: colors.accent },
+  spent: { fontFamily: font.bold, fontSize: 13, color: colors.ok },
   content: { padding: space(5), paddingTop: 0, paddingBottom: space(10) },
   sectionHeader: { gap: 2, marginTop: space(4), marginBottom: space(2) },
   card: {

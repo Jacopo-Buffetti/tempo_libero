@@ -1,0 +1,52 @@
+import { StyleSheet } from 'react-native';
+import { colors, font, radius, space } from '@/theme/tokens';
+
+export const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  field: { gap: space(1.5) },
+  label: { fontFamily: font.bold, fontSize: 13, color: colors.muted },
+  input: {
+    minHeight: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: space(3.5),
+    fontFamily: font.bold,
+    fontSize: 15,
+    color: colors.text,
+  },
+  multiline: { minHeight: 76, paddingTop: space(3), textAlignVertical: 'top', fontFamily: font.medium },
+  inputWarn: { borderColor: colors.warn, backgroundColor: colors.warnSoft },
+  warn: { fontFamily: font.bold, fontSize: 12, color: colors.warn },
+  moneyRow: { flexDirection: 'row', alignItems: 'center', gap: space(3), minHeight: 52 },
+  moneyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 44,
+    paddingHorizontal: space(3),
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  euro: { fontFamily: font.bold, fontSize: 14, color: colors.muted },
+  moneyInput: {
+    width: 84,
+    textAlign: 'right',
+    fontFamily: font.black,
+    fontSize: 16,
+    color: colors.text,
+    padding: 0,
+  },
+  section: { gap: space(2.5) },
+  sectionTitle: {
+    fontFamily: font.black,
+    fontSize: 13,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.accent,
+  },
+  sectionBody: { gap: space(3), backgroundColor: colors.bg },
+});

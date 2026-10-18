@@ -1,48 +1,35 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LOCATIONS, locationLabel, type Location } from '@/lib/items';
-import { errorMessage, useCreateList, useLowStock } from '@/lib/spesa';
+import { type Location } from '@/lib/items';
+import { errorMessage, locationsLabel, useCreateList, useLowStock } from '@/lib/spesa';
+import { LocationPicker } from '@/components/LocationPicker';
 import { useMembership } from '@/providers/AuthProvider';
 import { colors, type } from '@/theme/tokens';
 import { styles } from '@/styles/screens/spesa/nuova';
 
-const LOCATION_ICONS: Record<Location, keyof typeof Ionicons.glyphMap> = {
-  magazzino: 'cube-outline',
-  cucina: 'flame-outline',
-  bar: 'wine-outline',
-};
-
-const defaultName = (l: Location) =>
-  `Spesa ${locationLabel(l)} ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}`;
+const defaultName = (locations: Location[]) =>
+  `Spesa ${locationsLabel(locations)} ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}`;
 
 export default function NuovaLista() {
   const membership = useMembership();
   const orgId = membership.data?.org_id;
 
-  const [location, setLocation] = useState<Location>('cucina');
+  const [locations, setLocations] = useState<Location[]>(['cucina']);
   const [name, setName] = useState('');
   const [addLow, setAddLow] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const low = useLowStock(orgId, location);
+  const low = useLowStock(orgId, locations);
   const create = useCreateList(orgId);
   const lowCount = low.data?.length ?? 0;
 
   function save() {
     setError(null);
     create.mutate(
-      { name: name.trim() || defaultName(location), location, addLow: addLow && lowCount > 0 },
+      { name: name.trim() || defaultName(locations), locations, addLow: addLow && lowCount > 0 },
       {
         onSuccess: (id) => router.replace({ pathname: '/spesa/[id]', params: { id: id! } }),
         onError: (e) => setError(errorMessage(e, 'Creazione non riuscita. Riprova.')),
@@ -64,27 +51,10 @@ export default function NuovaLista() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.field}>
           <Text style={type.label}>Per</Text>
-          <View style={styles.tiles}>
-            {LOCATIONS.map((l) => {
-              const active = l.value === location;
-              return (
-                <Pressable
-                  key={l.value}
-                  onPress={() => setLocation(l.value)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
-                  style={[styles.tile, active && styles.tileActive]}
-                >
-                  <Ionicons
-                    name={LOCATION_ICONS[l.value]}
-                    size={26}
-                    color={active ? colors.onAccent : colors.text}
-                  />
-                  <Text style={[styles.tileText, active && { color: colors.onAccent }]}>{l.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <LocationPicker value={locations} onChange={setLocations} />
+          <Text style={type.caption}>
+            Puoi sceglierne più di uno. Se poi aggiungi un prodotto di un altro luogo, si aggiunge da solo.
+          </Text>
         </View>
 
         <View style={styles.field}>
@@ -92,7 +62,7 @@ export default function NuovaLista() {
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder={defaultName(location)}
+            placeholder={defaultName(locations)}
             placeholderTextColor={colors.muted}
             autoCapitalize="sentences"
             style={styles.input}
@@ -107,9 +77,9 @@ export default function NuovaLista() {
               {low.isLoading
                 ? 'Controllo l’inventario…'
                 : lowCount === 0
-                  ? `Niente sotto scorta in ${locationLabel(location)}`
-                  : `${lowCount} in ${locationLabel(location)}: ${low.data!
-                      .slice(0, 3)
+                  ? `Niente sotto scorta in ${locationsLabel(locations)}`
+                  : `${lowCount} in ${locationsLabel(locations)}: ${low
+                      .data!.slice(0, 3)
                       .map((i) => i.name)
                       .join(', ')}${lowCount > 3 ? '…' : ''}`}
             </Text>

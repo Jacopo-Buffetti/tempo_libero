@@ -1,7 +1,7 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
+import { readAsStringAsync } from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '@/lib/supabase';
 import {
@@ -74,9 +74,36 @@ export function inventoryCsv(items: Item[]) {
 
 export function templateCsv() {
   return inventoryCsv([
-    { id: '1', name: 'Carta igienica', location: 'magazzino', kind: 'consumabile', unit: 'rotoli', qty: 18, min_qty: 24, broken_qty: 0 },
-    { id: '2', name: 'Farina 00', location: 'cucina', kind: 'consumabile', unit: 'kg', qty: 2.5, min_qty: 5, broken_qty: 0 },
-    { id: '3', name: 'Sedie', location: 'magazzino', kind: 'attrezzatura', unit: 'pezzi', qty: 312, min_qty: null, broken_qty: 8 },
+    {
+      id: '1',
+      name: 'Carta igienica',
+      location: 'magazzino',
+      kind: 'consumabile',
+      unit: 'rotoli',
+      qty: 18,
+      min_qty: 24,
+      broken_qty: 0,
+    },
+    {
+      id: '2',
+      name: 'Farina 00',
+      location: 'cucina',
+      kind: 'consumabile',
+      unit: 'kg',
+      qty: 2.5,
+      min_qty: 5,
+      broken_qty: 0,
+    },
+    {
+      id: '3',
+      name: 'Sedie',
+      location: 'magazzino',
+      kind: 'attrezzatura',
+      unit: 'pezzi',
+      qty: 312,
+      min_qty: null,
+      broken_qty: 8,
+    },
   ]);
 }
 
@@ -88,7 +115,9 @@ export function inventoryTxt(items: Item[]) {
     g.items.forEach((i) => {
       const name = i.name.length > width - 2 ? `${i.name.slice(0, width - 3)}…` : i.name;
       const note = status(i);
-      lines.push(`${name.padEnd(width, '.')} ${quantityLabel(i.qty, i.unit).padEnd(16)}${note === 'ok' ? '' : ` ${note}`}`.trimEnd());
+      lines.push(
+        `${name.padEnd(width, '.')} ${quantityLabel(i.qty, i.unit).padEnd(16)}${note === 'ok' ? '' : ` ${note}`}`.trimEnd(),
+      );
     });
     lines.push('');
   });
@@ -205,7 +234,8 @@ const MIME: Record<ExportFormat, { mimeType: string; UTI: string }> = {
 };
 
 async function share(uri: string, format: ExportFormat) {
-  if (!(await Sharing.isAvailableAsync())) throw new Error('Condivisione non disponibile su questo dispositivo');
+  if (!(await Sharing.isAvailableAsync()))
+    throw new Error('Condivisione non disponibile su questo dispositivo');
   await Sharing.shareAsync(uri, { ...MIME[format], dialogTitle: 'Inventario' });
 }
 
@@ -265,14 +295,33 @@ const HEADER_ALIASES: Record<string, string[]> = {
 };
 
 const UNIT_ALIASES: Record<string, string> = {
-  pz: 'pezzi', pezzo: 'pezzi', pezzi: 'pezzi', n: 'pezzi', nr: 'pezzi',
-  conf: 'confezioni', confezione: 'confezioni', confezioni: 'confezioni', pacchi: 'confezioni', pacco: 'confezioni',
-  bott: 'bottiglie', bottiglia: 'bottiglie', bottiglie: 'bottiglie',
-  rotolo: 'rotoli', rotoli: 'rotoli',
-  cassa: 'casse', casse: 'casse',
-  kg: 'kg', chili: 'kg', chilo: 'kg',
-  g: 'g', gr: 'g', grammi: 'g',
-  l: 'litri', lt: 'litri', litro: 'litri', litri: 'litri',
+  pz: 'pezzi',
+  pezzo: 'pezzi',
+  pezzi: 'pezzi',
+  n: 'pezzi',
+  nr: 'pezzi',
+  conf: 'confezioni',
+  confezione: 'confezioni',
+  confezioni: 'confezioni',
+  pacchi: 'confezioni',
+  pacco: 'confezioni',
+  bott: 'bottiglie',
+  bottiglia: 'bottiglie',
+  bottiglie: 'bottiglie',
+  rotolo: 'rotoli',
+  rotoli: 'rotoli',
+  cassa: 'casse',
+  casse: 'casse',
+  kg: 'kg',
+  chili: 'kg',
+  chilo: 'kg',
+  g: 'g',
+  gr: 'g',
+  grammi: 'g',
+  l: 'litri',
+  lt: 'litri',
+  litro: 'litri',
+  litri: 'litri',
   ml: 'ml',
 };
 
@@ -324,14 +373,21 @@ export function parseCsv(text: string) {
 
 const toNumber = (s: string | undefined) => {
   if (s == null || s.trim() === '') return null;
-  const n = Number(s.trim().replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+  const n = Number(
+    s
+      .trim()
+      .replace(/\s/g, '')
+      .replace(/\.(?=\d{3}(\D|$))/g, '')
+      .replace(',', '.'),
+  );
   return Number.isFinite(n) ? n : NaN;
 };
 
 export function readImport(text: string, existing: Item[]) {
   const rows = parseCsv(text);
   const problems: ImportProblem[] = [];
-  if (rows.length === 0) return { rows: [] as ImportRow[], problems: [{ line: 0, text: 'Il file è vuoto.' }] };
+  if (rows.length === 0)
+    return { rows: [] as ImportRow[], problems: [{ line: 0, text: 'Il file è vuoto.' }] };
 
   const header = rows[0].map(normalize);
   const col = Object.fromEntries(
@@ -362,7 +418,10 @@ export function readImport(text: string, existing: Item[]) {
     const loc = normalize(get('location'));
     const location = LOCATIONS.find((l) => l.value === loc || normalize(l.label) === loc)?.value;
     if (!location) {
-      problems.push({ line, text: `“${name}”: luogo “${get('location')}” non valido (usa magazzino, cucina o bar).` });
+      problems.push({
+        line,
+        text: `“${name}”: luogo “${get('location')}” non valido (usa magazzino, cucina o bar).`,
+      });
       return;
     }
 
@@ -373,7 +432,12 @@ export function readImport(text: string, existing: Item[]) {
       problems.push({ line, text: `“${name}”: quantità “${get('qty')}” non valida.` });
       return;
     }
-    if (Number.isNaN(min) || (min != null && min < 0) || Number.isNaN(broken) || (broken != null && broken < 0)) {
+    if (
+      Number.isNaN(min) ||
+      (min != null && min < 0) ||
+      Number.isNaN(broken) ||
+      (broken != null && broken < 0)
+    ) {
       problems.push({ line, text: `“${name}”: scorta minima o pezzi da riparare non validi.` });
       return;
     }
@@ -392,7 +456,10 @@ export function readImport(text: string, existing: Item[]) {
 
     const key = `${location}|${name.toLowerCase()}`;
     if (seen.has(key)) {
-      problems.push({ line: seen.get(key)!, text: `“${name}” compare più volte in ${locationLabel(location)}: vale l’ultima riga.` });
+      problems.push({
+        line: seen.get(key)!,
+        text: `“${name}” compare più volte in ${locationLabel(location)}: vale l’ultima riga.`,
+      });
       const previous = parsed.findIndex((p) => `${p.location}|${p.name.toLowerCase()}` === key);
       if (previous >= 0) parsed.splice(previous, 1);
     }
@@ -414,14 +481,28 @@ export function readImport(text: string, existing: Item[]) {
   return { rows: parsed, problems };
 }
 
+async function readText(file: File) {
+  try {
+    return await file.text();
+  } catch (first) {
+    try {
+      return await readAsStringAsync(file.uri);
+    } catch {
+      throw first;
+    }
+  }
+}
+
 export async function pickCsv() {
-  const result = await DocumentPicker.getDocumentAsync({
-    type: ['text/csv', 'text/comma-separated-values', 'text/plain', 'application/vnd.ms-excel', '*/*'],
-    copyToCacheDirectory: true,
-  });
-  if (result.canceled) return null;
-  const asset = result.assets[0];
-  return { name: asset.name, text: await new File(asset.uri).text() };
+  const picked = await File.pickFileAsync({ mimeTypes: '*/*' });
+  if (picked.canceled || !picked.result) return null;
+  const file = picked.result;
+  const text = await readText(file);
+  if (text.includes('\u0000')) {
+    throw new Error('Il file scelto non è un CSV: scegline uno salvato in formato CSV.');
+  }
+  const name = /\.[a-z0-9]{2,4}$/i.test(file.name ?? '') ? file.name : 'File selezionato';
+  return { name, text };
 }
 
 export async function importItems(orgId: string, rows: ImportRow[]) {

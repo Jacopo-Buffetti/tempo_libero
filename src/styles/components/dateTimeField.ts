@@ -14,6 +14,7 @@ export const styles = StyleSheet.create({
   pressed: { backgroundColor: colors.pressed },
   label: { flex: 1, fontFamily: font.bold, fontSize: 16, color: colors.text },
   value: { flex: 1, fontFamily: font.bold, fontSize: 16, color: colors.text },
+  prefix: { minWidth: 44, fontFamily: font.bold, fontSize: 14, color: colors.muted },
   placeholder: { color: colors.muted, fontFamily: font.medium },
   timePress: { flex: 1, minHeight: touch, justifyContent: 'center' },
   addTime: {

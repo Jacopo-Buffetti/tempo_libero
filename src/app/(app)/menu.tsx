@@ -34,7 +34,9 @@ export default function Menu() {
       (e) => !term || e.name.toLowerCase().includes(term) || e.place?.toLowerCase().includes(term),
     );
     return {
-      upcoming: all.filter((e) => e.starts_on >= today).sort((a, b) => a.starts_on.localeCompare(b.starts_on)),
+      upcoming: all
+        .filter((e) => e.starts_on >= today)
+        .sort((a, b) => a.starts_on.localeCompare(b.starts_on)),
       past: all.filter((e) => e.starts_on < today),
     };
   }, [events.data, term, today]);
@@ -143,10 +145,10 @@ function UpcomingCard({ event, onPress }: { event: EventItem; onPress: () => voi
     >
       <Poster path={event.poster_path} style={styles.posterBig} />
       <View style={styles.cardText}>
-        <Text style={styles.badge}>
-          {event.starts_on === localIsoDate() ? 'Oggi' : 'In programma'}
+        <Text style={styles.badge}>{event.starts_on === localIsoDate() ? 'Oggi' : 'In programma'}</Text>
+        <Text style={type.heading} numberOfLines={2}>
+          {event.name}
         </Text>
-        <Text style={type.heading} numberOfLines={2}>{event.name}</Text>
         <Text style={type.caption}>{formatEventDate(event.starts_on, event.start_time)}</Text>
         {event.place && <Text style={type.caption}>{event.place}</Text>}
         {fixedPriceLine(event) && <Text style={styles.fixed}>{fixedPriceLine(event)}</Text>}
@@ -177,7 +179,9 @@ function PastTile({
       <Poster path={event.poster_path} style={styles.posterTile} />
       <View style={styles.tileFoot}>
         <View style={styles.flex}>
-          <Text style={styles.tileName} numberOfLines={1}>{event.name}</Text>
+          <Text style={styles.tileName} numberOfLines={1}>
+            {event.name}
+          </Text>
           <Text style={type.caption}>
             {d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
           </Text>

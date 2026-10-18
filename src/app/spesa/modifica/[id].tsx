@@ -13,38 +13,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LOCATIONS, type Location } from '@/lib/items';
+import { type Location } from '@/lib/items';
 import {
   errorMessage,
+  listLocations,
+  locationsLabel,
   useDeleteList,
   useList,
   useListItems,
   useUpdateList,
-  type PaymentSource,
 } from '@/lib/spesa';
 import { colors, type } from '@/theme/tokens';
+import { LocationPicker } from '@/components/LocationPicker';
 import { styles } from '@/styles/screens/spesa/modifica';
-
-const LOCATION_ICONS: Record<Location, keyof typeof Ionicons.glyphMap> = {
-  magazzino: 'cube-outline',
-  cucina: 'flame-outline',
-  bar: 'wine-outline',
-};
-
-const isoToIt = (iso?: string | null) => {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-};
-
-function itToIso(text: string): string | null {
-  const m = text.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!m) return null;
-  const [, d, mo, y] = m;
-  const date = new Date(Number(y), Number(mo) - 1, Number(d));
-  if (date.getDate() !== Number(d) || date.getMonth() !== Number(mo) - 1) return null;
-  return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
-}
 
 export default function ModificaLista() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -54,10 +35,7 @@ export default function ModificaLista() {
   const remove = useDeleteList(id);
 
   const [name, setName] = useState('');
-  const [location, setLocation] = useState<Location>('cucina');
-  const [shop, setShop] = useState('');
-  const [date, setDate] = useState('');
-  const [paidBy, setPaidBy] = useState<PaymentSource>('cassa');
+  const [locations, setLocations] = useState<Location[]>(['cucina']);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,10 +43,7 @@ export default function ModificaLista() {
     if (ready || !list.data) return;
     const l = list.data;
     setName(l.name ?? '');
-    setLocation(l.location!);
-    setShop(l.shop ?? '');
-    setDate(isoToIt(l.closed_on));
-    setPaidBy(l.paid_by ?? 'cassa');
+    setLocations(listLocations(l));
     setReady(true);
   }, [ready, list.data]);
 
@@ -83,24 +58,15 @@ export default function ModificaLista() {
   const l = list.data;
   const isOpen = l.status === 'aperta';
   const checkedLinked = (items.data ?? []).filter((i) => i.checked && i.item_id).length;
-  const anyChecked = (items.data ?? []).some((i) => i.checked);
-  const canMove = isOpen && !anyChecked;
 
   const cleanName = name.trim();
-  const isoDate = isOpen ? null : itToIso(date);
-  const dateInvalid = !isOpen && isoDate == null;
-  const canSave = cleanName.length > 0 && !dateInvalid && !update.isPending;
+  const canSave = cleanName.length > 0 && !update.isPending;
 
   function save() {
     setError(null);
     const changes: Parameters<typeof update.mutate>[0] = {};
     if (cleanName !== l.name) changes.name = cleanName;
-    if (location !== l.location) changes.location = location;
-    if (!isOpen) {
-      if ((shop.trim() || null) !== (l.shop ?? null)) changes.shop = shop.trim() || null;
-      if (isoDate && isoDate !== l.closed_on) changes.closed_on = isoDate;
-      if (paidBy !== l.paid_by) changes.paid_by = paidBy;
-    }
+    if (isOpen && locations.join(',') !== listLocations(l).join(',')) changes.locations = locations;
     if (Object.keys(changes).length === 0) {
       router.back();
       return;
@@ -157,115 +123,26 @@ export default function ModificaLista() {
         <View style={styles.back} />
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.field}>
             <Text style={type.label}>Nome</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="sentences"
-              style={styles.input}
-            />
+            <TextInput value={name} onChangeText={setName} autoCapitalize="sentences" style={styles.input} />
           </View>
 
           <View style={styles.field}>
             <Text style={type.label}>Per</Text>
-            <View style={styles.tiles}>
-              {LOCATIONS.map((loc) => {
-                const active = loc.value === location;
-                return (
-                  <Pressable
-                    key={loc.value}
-                    onPress={() => canMove && setLocation(loc.value)}
-                    disabled={!canMove}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: active, disabled: !canMove }}
-                    style={[styles.tile, active && styles.tileActive, !canMove && !active && styles.tileOff]}
-                  >
-                    <Ionicons
-                      name={LOCATION_ICONS[loc.value]}
-                      size={24}
-                      color={active ? colors.onAccent : colors.text}
-                    />
-                    <Text style={[styles.tileText, active && { color: colors.onAccent }]}>{loc.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            {!canMove && (
-              <Text style={type.caption}>
-                {isOpen
-                  ? 'Il luogo si può cambiare solo prima di spuntare le voci.'
-                  : 'Il luogo di una lista chiusa non si cambia.'}
-              </Text>
+            {isOpen ? (
+              <>
+                <LocationPicker value={locations} onChange={setLocations} />
+                <Text style={type.caption}>
+                  Togliere un luogo non sposta niente: ogni prodotto va sempre nel suo posto in inventario.
+                </Text>
+              </>
+            ) : (
+              <Text style={type.body}>{locationsLabel(locations)}</Text>
             )}
           </View>
-
-          {!isOpen && (
-            <>
-              <View style={styles.field}>
-                <Text style={type.label}>Negozio</Text>
-                <TextInput
-                  value={shop}
-                  onChangeText={setShop}
-                  placeholder="Es. Supermercato"
-                  placeholderTextColor={colors.muted}
-                  style={styles.input}
-                />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={type.label}>Data della spesa</Text>
-                <TextInput
-                  value={date}
-                  onChangeText={setDate}
-                  placeholder="gg/mm/aaaa"
-                  placeholderTextColor={colors.muted}
-                  keyboardType="numbers-and-punctuation"
-                  style={[styles.input, dateInvalid && styles.inputBad]}
-                />
-                {dateInvalid && (
-                  <Text style={[type.caption, { color: colors.warn }]}>
-                    Scrivi la data come 17/10/2026
-                  </Text>
-                )}
-              </View>
-
-              <View style={styles.field}>
-                <Text style={type.label}>Pagato con</Text>
-                <View style={styles.segment}>
-                  {(
-                    [
-                      { value: 'cassa', label: 'Cassa Pro Loco' },
-                      { value: 'volontario', label: 'Anticipato da me' },
-                    ] as const
-                  ).map((p) => {
-                    const active = p.value === paidBy;
-                    return (
-                      <Pressable
-                        key={p.value}
-                        onPress={() => setPaidBy(p.value)}
-                        accessibilityRole="radio"
-                        accessibilityState={{ selected: active }}
-                        style={[styles.segmentItem, active && styles.segmentItemActive]}
-                      >
-                        <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                          {p.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                {paidBy !== l.paid_by && (
-                  <Text style={type.caption}>Cambiando chi ha pagato, il rimborso riparte da zero.</Text>
-                )}
-              </View>
-            </>
-          )}
 
           {error && <Text style={styles.error}>{error}</Text>}
 

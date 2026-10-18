@@ -25,11 +25,12 @@ import { Chip } from '@/components/Chip';
 import { colors, type } from '@/theme/tokens';
 import { styles } from '@/styles/screens/datiInventario';
 
-const FORMATS: { value: ExportFormat; label: string; hint: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { value: 'pdf', label: 'PDF', hint: 'Da stampare o mandare', icon: 'document-text-outline' },
-  { value: 'csv', label: 'CSV', hint: 'Per Excel o Fogli Google', icon: 'grid-outline' },
-  { value: 'txt', label: 'TXT', hint: 'Testo semplice', icon: 'reader-outline' },
-];
+const FORMATS: { value: ExportFormat; label: string; hint: string; icon: keyof typeof Ionicons.glyphMap }[] =
+  [
+    { value: 'pdf', label: 'PDF', hint: 'Da stampare o mandare', icon: 'document-text-outline' },
+    { value: 'csv', label: 'CSV', hint: 'Per Excel o Fogli Google', icon: 'grid-outline' },
+    { value: 'txt', label: 'TXT', hint: 'Testo semplice', icon: 'reader-outline' },
+  ];
 
 type Preview = { fileName: string; rows: ImportRow[]; problems: ImportProblem[] };
 
@@ -78,8 +79,11 @@ export default function DatiInventario() {
       const existing = await fetchInventory(orgId, 'tutto');
       const { rows, problems } = readImport(file.text, existing);
       setPreview({ fileName: file.name, rows, problems });
-    } catch {
-      setError('Non riesco a leggere il file. Controlla che sia un CSV.');
+    } catch (e) {
+      const detail = e instanceof Error && e.message ? e.message : '';
+      setError(
+        detail.includes('CSV') ? detail : `Non riesco a leggere il file.${detail ? ` (${detail})` : ''}`,
+      );
     } finally {
       setBusy(null);
     }
@@ -127,7 +131,12 @@ export default function DatiInventario() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Scarica l’inventario</Text>
               <View style={styles.chips}>
-                <Chip label="Tutto" variant="accent" active={scope === 'tutto'} onPress={() => setScope('tutto')} />
+                <Chip
+                  label="Tutto"
+                  variant="accent"
+                  active={scope === 'tutto'}
+                  onPress={() => setScope('tutto')}
+                />
                 {LOCATIONS.map((l) => (
                   <Chip
                     key={l.value}
@@ -224,18 +233,26 @@ export default function DatiInventario() {
             {preview.rows.length > 0 && (
               <View style={styles.card}>
                 {preview.rows.map((r, i) => (
-                  <View key={`${r.location}-${r.name}`} style={[styles.row, i < preview.rows.length - 1 && styles.divider]}>
+                  <View
+                    key={`${r.location}-${r.name}`}
+                    style={[styles.row, i < preview.rows.length - 1 && styles.divider]}
+                  >
                     <View style={styles.flex}>
-                      <Text style={type.body} numberOfLines={1}>{r.name}</Text>
+                      <Text style={type.body} numberOfLines={1}>
+                        {r.name}
+                      </Text>
                       <Text style={type.caption}>
-                        {locationLabel(r.location)} · {r.kind === 'consumabile' ? 'consumabile' : 'attrezzatura'}
+                        {locationLabel(r.location)} ·{' '}
+                        {r.kind === 'consumabile' ? 'consumabile' : 'attrezzatura'}
                         {r.min_qty != null ? ` · minimo ${quantityLabel(r.min_qty, r.unit)}` : ''}
                         {r.broken_qty > 0 ? ` · ${r.broken_qty} da riparare` : ''}
                       </Text>
                     </View>
                     <View style={styles.rowRight}>
                       <Text style={styles.qty}>{quantityLabel(r.qty, r.unit)}</Text>
-                      <Text style={[styles.badge, r.action === 'nuovo' ? styles.badgeNew : styles.badgeUpdate]}>
+                      <Text
+                        style={[styles.badge, r.action === 'nuovo' ? styles.badgeNew : styles.badgeUpdate]}
+                      >
                         {r.action === 'nuovo' ? 'Nuovo' : 'Aggiorna'}
                       </Text>
                     </View>

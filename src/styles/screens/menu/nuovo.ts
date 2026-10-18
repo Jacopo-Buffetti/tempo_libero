@@ -16,7 +16,6 @@ export const styles = StyleSheet.create({
   content: { padding: space(5), gap: space(5) },
   field: { gap: space(2) },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space(2) },
-  twoCols: { flexDirection: 'row', gap: space(2) },
   input: {
     height: 50,
     borderRadius: radius.md,
@@ -28,8 +27,6 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
-  time: { width: 130 },
-  inputBad: { borderColor: colors.warn, borderWidth: 2 },
   upload: {
     flexDirection: 'row',
     alignItems: 'center',

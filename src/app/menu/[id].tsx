@@ -89,7 +89,7 @@ export default function DettaglioMenu() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}>
           <Ionicons name="chevron-back" size={22} color={colors.accent} />
@@ -108,12 +108,18 @@ export default function DettaglioMenu() {
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={event.isRefetching} onRefresh={event.refetch} tintColor={colors.accent} />
+          <RefreshControl
+            refreshing={event.isRefetching}
+            onRefresh={event.refetch}
+            tintColor={colors.accent}
+          />
         }
       >
         <View style={styles.hero}>
           <Pressable
-            onPress={() => (url ? setZoom(true) : router.push({ pathname: '/menu/modifica/[id]', params: { id: e.id } }))}
+            onPress={() =>
+              url ? setZoom(true) : router.push({ pathname: '/menu/modifica/[id]', params: { id: e.id } })
+            }
             accessibilityLabel={url ? 'Ingrandisci la locandina' : 'Aggiungi una locandina'}
           >
             {url ? (
@@ -127,7 +133,9 @@ export default function DettaglioMenu() {
           </Pressable>
 
           <View style={styles.heroText}>
-            <Text style={type.title} numberOfLines={3}>{e.name}</Text>
+            <Text style={type.title} numberOfLines={3}>
+              {e.name}
+            </Text>
             <Text style={type.caption}>{formatEventDate(e.starts_on, e.start_time)}</Text>
             {e.place && <Text style={type.caption}>{e.place}</Text>}
             <Text style={type.caption}>
@@ -160,9 +168,7 @@ export default function DettaglioMenu() {
 
         {eventList.data && (
           <Pressable
-            onPress={() =>
-              router.push({ pathname: '/spesa/[id]', params: { id: eventList.data!.id! } })
-            }
+            onPress={() => router.push({ pathname: '/spesa/[id]', params: { id: eventList.data!.id! } })}
             style={({ pressed }) => [styles.listCard, pressed && { opacity: 0.85 }]}
           >
             <Ionicons name="cart-outline" size={22} color={colors.ok} />
@@ -181,9 +187,7 @@ export default function DettaglioMenu() {
         {sections.length === 0 ? (
           <Pressable onPress={() => addDish()} style={styles.emptyCard}>
             <Ionicons name="restaurant-outline" size={26} color={colors.muted} />
-            <Text style={[type.caption, styles.center]}>
-              Il menù è vuoto. Aggiungi il primo piatto.
-            </Text>
+            <Text style={[type.caption, styles.center]}>Il menù è vuoto. Aggiungi il primo piatto.</Text>
           </Pressable>
         ) : (
           sections.map((s) => (

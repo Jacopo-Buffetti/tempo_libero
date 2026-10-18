@@ -11,11 +11,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LOCATIONS, locationLabel, type Location } from '@/lib/items';
+import { LOCATIONS, type Location } from '@/lib/items';
 import {
   dateFromIso,
   formatEuro,
+  listLocations,
+  listTotal,
   localIsoDate,
+  locationsLabel,
   useListsContaining,
   useListsSummary,
   type ListSummary,
@@ -25,7 +28,13 @@ import { useMembership } from '@/providers/AuthProvider';
 import { colors, space, type } from '@/theme/tokens';
 import { styles } from '@/styles/screens/listeSpesa';
 
-const toRefund = (l: ListSummary) => l.paid_by === 'volontario' && !l.reimbursed;
+const refundOf = (l: ListSummary) =>
+  (l.runs_count ?? 0) > 0
+    ? (l.refund_cents ?? 0)
+    : l.paid_by === 'volontario' && !l.reimbursed
+      ? listTotal(l)
+      : 0;
+const toRefund = (l: ListSummary) => refundOf(l) > 0;
 
 function useDebounced<T>(value: T, ms = 250) {
   const [v, setV] = useState(value);
@@ -50,7 +59,7 @@ export default function ListeSpesa() {
   const filtered = useMemo(() => {
     const t = term.toLowerCase();
     return (lists.data ?? []).filter((l) => {
-      if (place !== 'tutte' && l.location !== place) return false;
+      if (place !== 'tutte' && !listLocations(l).includes(place)) return false;
       if (!t) return true;
       return (
         l.name?.toLowerCase().includes(t) ||
@@ -74,8 +83,8 @@ export default function ListeSpesa() {
   const thisMonth = localIsoDate().slice(0, 7);
   const monthTotal = allClosed
     .filter((l) => l.closed_on?.startsWith(thisMonth))
-    .reduce((s, l) => s + (l.total_cents ?? 0), 0);
-  const refundTotal = allClosed.filter(toRefund).reduce((s, l) => s + (l.total_cents ?? 0), 0);
+    .reduce((s, l) => s + listTotal(l), 0);
+  const refundTotal = all.reduce((s, l) => s + refundOf(l), 0);
 
   const sections = [
     { key: 'attive', title: 'Attive', data: open },
@@ -222,7 +231,9 @@ function OpenCard({
     >
       <View style={styles.cardTop}>
         <View style={styles.flex}>
-          <Text style={type.body} numberOfLines={1}>{list.name}</Text>
+          <Text style={type.body} numberOfLines={1}>
+            {list.name}
+          </Text>
           <Text style={type.caption}>
             {total === 0
               ? 'Lista vuota'
@@ -230,9 +241,21 @@ function OpenCard({
                 ? 'Tutto preso · da chiudere'
                 : `${left} da prendere su ${total}`}
           </Text>
+          {(list.runs_count ?? 0) > 0 && (
+            <Text style={styles.spent}>
+              Già speso {formatEuro(list.spent_cents)} in {list.runs_count}{' '}
+              {list.runs_count === 1 ? 'spesa' : 'spese'}
+              {(list.unregistered_count ?? 0) > 0 ? ` · ${list.unregistered_count} da registrare` : ''}
+            </Text>
+          )}
+          {(list.runs_count ?? 0) === 0 && (list.unregistered_count ?? 0) > 0 && (
+            <Text style={styles.spent}>{list.unregistered_count} presi, da registrare</Text>
+          )}
           {match && <Text style={styles.match}>Contiene: {match}</Text>}
         </View>
-        <Text style={styles.tag}>{locationLabel(list.location!)}</Text>
+        <Text style={styles.tag} numberOfLines={1}>
+          {locationsLabel(listLocations(list))}
+        </Text>
         <Ionicons name="chevron-forward" size={18} color={colors.muted} />
       </View>
       {total > 0 && (
@@ -262,15 +285,25 @@ function ClosedRow({
   const day = dateFromIso(list.closed_on ?? localIsoDate());
   const notes: string[] = [];
   let warn = false;
-  if ((list.missing_prices ?? 0) > 0) {
-    notes.push(list.missing_prices === 1 ? '1 prezzo da inserire' : `${list.missing_prices} prezzi da inserire`);
+  const withReceipts = (list.receipts_count ?? 0) > 0;
+  const missingAmounts = withReceipts ? (list.receipts_missing ?? 0) : (list.missing_prices ?? 0);
+  if (missingAmounts > 0) {
+    notes.push(
+      withReceipts
+        ? missingAmounts === 1
+          ? '1 scontrino da completare'
+          : `${missingAmounts} scontrini da completare`
+        : missingAmounts === 1
+          ? '1 prezzo da inserire'
+          : `${missingAmounts} prezzi da inserire`,
+    );
     warn = true;
   }
   if (toRefund(list)) {
     notes.push('da rimborsare');
     warn = true;
   }
-  if (!warn) notes.push([list.shop, locationLabel(list.location!)].filter(Boolean).join(' · '));
+  if (!warn) notes.push([list.shop, locationsLabel(listLocations(list))].filter(Boolean).join(' · '));
   if (match) notes.unshift(`contiene: ${match}`);
 
   return (
@@ -290,12 +323,14 @@ function ClosedRow({
         <Text style={styles.dateMonth}>{day.toLocaleDateString('it-IT', { month: 'short' })}</Text>
       </View>
       <View style={styles.flex}>
-        <Text style={type.body} numberOfLines={1}>{list.name}</Text>
+        <Text style={type.body} numberOfLines={1}>
+          {list.name}
+        </Text>
         <Text style={[type.caption, warn && { color: colors.warn }]} numberOfLines={1}>
           {notes.join(' · ')}
         </Text>
       </View>
-      <Text style={styles.amount}>{formatEuro(list.total_cents)}</Text>
+      <Text style={styles.amount}>{formatEuro(listTotal(list))}</Text>
     </Pressable>
   );
 }

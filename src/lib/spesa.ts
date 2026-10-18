@@ -3,19 +3,29 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/lib/database.types';
-import { escapeLike, isLow, ITEM_COLUMNS, itemsKeys, movementsKeys, type Location } from '@/lib/items';
+import {
+  LOCATIONS,
+  escapeLike,
+  isLow,
+  ITEM_COLUMNS,
+  itemsKeys,
+  movementsKeys,
+  type Kind,
+  type Location,
+} from '@/lib/items';
 
 export type PaymentSource = Database['public']['Enums']['payment_source'];
 export type ListSummary = Database['public']['Views']['shopping_list_summary']['Row'];
 
 export const LIST_ITEM_COLUMNS =
-  'id, list_id, item_id, name, qty, unit, note, checked, checked_at, price_cents, created_at, items(location), dish_ingredients(qty, menu_dishes(name))';
+  'id, list_id, item_id, run_id, name, qty, unit, note, checked, checked_at, price_cents, created_at, items(location), dish_ingredients(qty, menu_dishes(name))';
 
 export type ListItem = Pick<
   Database['public']['Tables']['shopping_list_items']['Row'],
   | 'id'
   | 'list_id'
   | 'item_id'
+  | 'run_id'
   | 'name'
   | 'qty'
   | 'unit'
@@ -40,12 +50,14 @@ export const spesaKeys = {
   summary: (orgId?: string) => ['spesa', 'summary', orgId] as const,
   list: (id?: string) => ['spesa', 'list', id] as const,
   items: (id?: string) => ['spesa', 'items', id] as const,
-  low: (orgId?: string, location?: Location) => ['spesa', 'low', orgId, location] as const,
+  low: (orgId?: string, locations?: Location[]) => ['spesa', 'low', orgId, locations?.join(',')] as const,
 };
 
 export function formatEuro(cents: number | null | undefined) {
   if (cents == null) return '—';
-  const euros = Math.floor(cents / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const euros = Math.floor(cents / 100)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return `€ ${euros},${String(cents % 100).padStart(2, '0')}`;
 }
 
@@ -137,16 +149,16 @@ export function useListItems(listId?: string) {
   });
 }
 
-export function useLowStock(orgId?: string, location?: Location) {
+export function useLowStock(orgId?: string, locations?: Location[]) {
   return useQuery({
-    queryKey: spesaKeys.low(orgId, location),
-    enabled: !!orgId && !!location,
+    queryKey: spesaKeys.low(orgId, locations),
+    enabled: !!orgId && !!locations?.length,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('items')
         .select(ITEM_COLUMNS)
         .eq('org_id', orgId!)
-        .eq('location', location!)
+        .in('location', locations!)
         .eq('kind', 'consumabile')
         .not('min_qty', 'is', null)
         .order('name');
@@ -169,11 +181,11 @@ function useInvalidateSpesa() {
 export function useCreateList(orgId?: string) {
   const invalidate = useInvalidateSpesa();
   return useMutation({
-    mutationFn: async (v: { name: string; location: Location; addLow: boolean }) => {
+    mutationFn: async (v: { name: string; locations: Location[]; addLow: boolean }) => {
       const { data, error } = await supabase.rpc('create_shopping_list', {
         p_org_id: orgId!,
         p_name: v.name,
-        p_location: v.location,
+        p_locations: v.locations,
         p_add_low: v.addLow,
       });
       if (error) throw error;
@@ -268,6 +280,7 @@ export type NewListEntry = {
   note?: string | null;
   itemId?: string | null;
   createIn?: Location;
+  kind?: Kind;
   dishId?: string | null;
 };
 
@@ -284,7 +297,7 @@ export function useAddListItems(listId?: string, orgId?: string) {
               org_id: orgId!,
               name: e.name,
               location: e.createIn,
-              kind: 'consumabile',
+              kind: e.kind ?? 'consumabile',
               unit: e.unit,
               qty: 0,
             })
@@ -365,10 +378,7 @@ export function useSetReimbursed(listId?: string) {
   const invalidate = useInvalidateSpesa();
   return useMutation({
     mutationFn: async (value: boolean) => {
-      const { error } = await supabase
-        .from('shopping_lists')
-        .update({ reimbursed: value })
-        .eq('id', listId!);
+      const { error } = await supabase.from('shopping_lists').update({ reimbursed: value }).eq('id', listId!);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -384,6 +394,7 @@ export function useUpdateList(listId?: string) {
     mutationFn: async (v: {
       name?: string;
       location?: Location;
+      locations?: Location[];
       shop?: string | null;
       closed_on?: string;
       paid_by?: PaymentSource;
@@ -437,8 +448,166 @@ export function useListsContaining(orgId?: string, term?: string) {
 }
 
 export function errorMessage(e: unknown, fallback: string) {
-  const err = e as { code?: string; message?: string };
+  const err = e as { code?: string; message?: string; details?: string };
+  const message = err.message ?? '';
   if (err.code === '23505') return 'Esiste già: è in questa lista o in inventario con lo stesso nome.';
-  if (err.code === 'P0001' && err.message) return err.message;
-  return fallback;
+  if (err.code === 'P0001' && message) return message;
+  if (err.code === 'PGRST204' || err.code === '42703') {
+    const column = message.match(/'([^']+)' column|column "?([a-z_]+)"?/i);
+    const name = column?.[1] ?? column?.[2];
+    return `${fallback} Nel database manca ${name ? `la colonna “${name}”` : 'una colonna'}: c’è una migrazione da eseguire.`;
+  }
+  if (err.code === '42P01' || err.code === 'PGRST205') {
+    return `${fallback} Nel database manca una tabella: c’è una migrazione da eseguire.`;
+  }
+  if (err.code === '42883' || err.code === 'PGRST202') {
+    return `${fallback} Nel database manca una funzione: c’è una migrazione da eseguire.`;
+  }
+  if (err.code === '42501') return `${fallback} Non hai i permessi per questa operazione.`;
+  if (err.code === '23514')
+    return `${fallback} Un valore non è accettato (per esempio una data di fine prima dell’inizio).`;
+  if (err.code === '23503')
+    return `${fallback} Il dato è collegato ad altro che non esiste o non si può togliere.`;
+  if (/network request failed|failed to fetch/i.test(message)) {
+    return `${fallback} Sembra che manchi la connessione a internet.`;
+  }
+  return message ? `${fallback} (${message})` : fallback;
 }
+
+export const listTotal = (l: ListSummary) => {
+  if ((l.runs_count ?? 0) > 0) return l.spent_cents ?? 0;
+  return (l.receipts_count ?? 0) > 0 ? (l.receipts_cents ?? 0) : (l.total_cents ?? 0);
+};
+
+export type Run = {
+  id: string;
+  shop: string | null;
+  run_date: string;
+  paid_by: PaymentSource;
+  paid_by_user: string | null;
+  reimbursed: boolean;
+  created_at: string;
+  total_cents: number;
+  receipts_count: number;
+  receipts_missing: number;
+  items_count: number;
+  prices_missing: number;
+};
+
+type RawRun = Omit<
+  Run,
+  'total_cents' | 'receipts_count' | 'receipts_missing' | 'items_count' | 'prices_missing'
+> & {
+  shopping_receipts: { total_cents: number | null }[];
+  shopping_list_items: { price_cents: number | null; checked: boolean }[];
+};
+
+export const runsKey = (listId?: string) => ['spesa', 'runs', listId] as const;
+
+export function useRuns(listId?: string) {
+  return useQuery({
+    queryKey: runsKey(listId),
+    enabled: !!listId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('shopping_runs')
+        .select(
+          'id, shop, run_date, paid_by, paid_by_user, reimbursed, created_at, shopping_receipts(total_cents), shopping_list_items(price_cents, checked)',
+        )
+        .eq('list_id', listId!)
+        .order('run_date')
+        .order('created_at');
+      if (error) throw error;
+      return (data as unknown as RawRun[]).map(({ shopping_receipts, shopping_list_items, ...r }) => {
+        const items = shopping_list_items.filter((i) => i.checked);
+        const fromReceipts = shopping_receipts.length > 0;
+        return {
+          ...r,
+          total_cents: fromReceipts
+            ? shopping_receipts.reduce((sum, x) => sum + (x.total_cents ?? 0), 0)
+            : items.reduce((sum, x) => sum + (x.price_cents ?? 0), 0),
+          receipts_count: shopping_receipts.length,
+          receipts_missing: shopping_receipts.filter((x) => x.total_cents == null).length,
+          items_count: items.length,
+          prices_missing: fromReceipts ? 0 : items.filter((x) => x.price_cents == null).length,
+        } as Run;
+      });
+    },
+  });
+}
+
+export function useRegisterRun(listId?: string) {
+  const invalidate = useInvalidateSpesa();
+  return useMutation({
+    mutationFn: async (v: {
+      shop: string;
+      runDate: string;
+      paidBy: PaymentSource;
+      prices: { id: string; price_cents: number | null }[];
+    }) => {
+      const { data, error } = await supabase.rpc('register_shopping_run', {
+        p_list_id: listId!,
+        p_shop: v.shop,
+        p_run_date: v.runDate,
+        p_paid_by: v.paidBy,
+        p_prices: v.prices,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      invalidate();
+    },
+  });
+}
+
+export function useSetRunReimbursed(listId?: string) {
+  const invalidate = useInvalidateSpesa();
+  return useMutation({
+    mutationFn: async ({ id, value }: { id: string; value: boolean }) => {
+      const { error } = await supabase.from('shopping_runs').update({ reimbursed: value }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      invalidate();
+    },
+  });
+}
+
+export const runDateLabel = (iso: string) =>
+  dateFromIso(iso).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+
+export function usePayerLabel(orgId?: string, currentUserId?: string) {
+  const members = useQuery({
+    queryKey: ['members', orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('members')
+        .select('user_id, display_name')
+        .eq('org_id', orgId!);
+      if (error) throw error;
+      return data;
+    },
+  });
+  return (paidBy: PaymentSource, userId: string | null) => {
+    if (paidBy === 'cassa') return 'Cassa Pro Loco';
+    if (userId && userId === currentUserId) return 'Anticipata da te';
+    const name = members.data?.find((m) => m.user_id === userId)?.display_name;
+    return `Anticipata da ${name ?? 'un volontario'}`;
+  };
+}
+
+export const listLocations = (l: { location?: Location | null; locations?: Location[] | null }) =>
+  l.locations?.length ? l.locations : l.location ? [l.location] : [];
+
+export function locationsLabel(locations: Location[]) {
+  const labels = LOCATIONS.filter((l) => locations.includes(l.value)).map((l) => l.label);
+  if (labels.length <= 1) return labels[0] ?? '';
+  return `${labels.slice(0, -1).join(', ')} e ${labels[labels.length - 1]}`;
+}
+
+export const primaryLocation = (l: { location?: Location | null; locations?: Location[] | null }) =>
+  listLocations(l)[0] ?? 'cucina';

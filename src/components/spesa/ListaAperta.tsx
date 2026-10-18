@@ -17,10 +17,24 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { escapeLike, formatQty, locationLabel, roundQty, stepFor } from '@/lib/items';
+import {
+  LOCATIONS,
+  escapeLike,
+  formatQty,
+  locationLabel,
+  roundQty,
+  stepFor,
+  unitWord,
+  type Location,
+} from '@/lib/items';
 import {
   dishNames,
   errorMessage,
+  formatEuro,
+  listLocations,
+  locationsLabel,
+  usePayerLabel,
+  useRuns,
   useAddListItems,
   useListItems,
   useLowStock,
@@ -31,7 +45,8 @@ import {
   type ListSummary,
   type NewListEntry,
 } from '@/lib/spesa';
-import { useMembership } from '@/providers/AuthProvider';
+import { useAuth, useMembership } from '@/providers/AuthProvider';
+import { RunCard } from '@/components/spesa/RunCard';
 import { colors, space, type } from '@/theme/tokens';
 import { openListText, shareAnywhere, shareOnWhatsApp } from '@/lib/condividiLista';
 import { styles } from '@/styles/components/listaAperta';
@@ -40,51 +55,85 @@ export function ListaAperta({ list }: { list: ListSummary }) {
   const membership = useMembership();
   const orgId = membership.data?.org_id;
   const listId = list.id!;
-  const location = list.location!;
-  const where = locationLabel(location);
+  const locations = listLocations(list);
+  const location = locations[0] ?? 'cucina';
+  const where = locationsLabel(locations);
 
   const items = useListItems(listId);
   const toggle = useToggleListItem(listId);
   const setQty = useSetListItemQty(listId);
   const remove = useRemoveListItem(listId);
   const add = useAddListItems(listId, orgId);
-  const low = useLowStock(orgId, location);
+  const low = useLowStock(orgId, locations);
+  const [grouped, setGrouped] = useState(true);
 
   const [text, setText] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
   const term = text.trim();
 
-  const sorted = useMemo(
-    () => [...(items.data ?? [])].sort((a, b) => Number(a.checked) - Number(b.checked)),
-    [items.data],
-  );
+  const { session } = useAuth();
+  const runs = useRuns(listId);
+  const payerLabel = usePayerLabel(orgId, session?.user.id);
+
+  const stage = (i: ListItem) => (!i.checked ? 0 : i.run_id ? 2 : 1);
+  const sorted = useMemo(() => [...(items.data ?? [])].sort((a, b) => stage(a) - stage(b)), [items.data]);
+  const open = sorted.filter((i) => stage(i) < 2);
   const done = sorted.filter((i) => i.checked).length;
-  const linkedIds = useMemo(
-    () => new Set(sorted.map((i) => i.item_id).filter(Boolean)),
-    [sorted],
-  );
+
+  const groups = useMemo(() => {
+    const order: (Location | 'libero')[] = [
+      ...locations,
+      ...LOCATIONS.map((l) => l.value).filter((l) => !locations.includes(l)),
+      'libero',
+    ];
+    return order
+      .map((key) => ({
+        key,
+        label: key === 'libero' ? 'Solo in lista' : locationLabel(key),
+        items: open.filter((i) => (i.items?.location ?? 'libero') === key),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [open, locations]);
+
+  type Entry =
+    | { kind: 'header'; key: string; label: string; count: number }
+    | { kind: 'item'; item: ListItem; isFirst: boolean; isLast: boolean };
+
+  const entries: Entry[] = useMemo(() => {
+    const asItems = (list: ListItem[]): Entry[] =>
+      list.map((item, i) => ({ kind: 'item', item, isFirst: i === 0, isLast: i === list.length - 1 }));
+    if (!grouped || groups.length <= 1) return asItems(open);
+    return groups.flatMap((g) => [
+      { kind: 'header', key: g.key, label: g.label, count: g.items.length } as Entry,
+      ...asItems(g.items),
+    ]);
+  }, [grouped, groups, open]);
+  const unregistered = sorted.filter((i) => stage(i) === 1).length;
+  const runList = runs.data ?? [];
+  const spent = runList.reduce((sum, r) => sum + r.total_cents, 0);
+  const linkedIds = useMemo(() => new Set(sorted.map((i) => i.item_id).filter(Boolean)), [sorted]);
   const lowMissing = (low.data ?? []).filter((i) => !linkedIds.has(i.id));
 
   const suggestions = useQuery({
-    queryKey: ['spesa', 'suggest', orgId, location, term],
+    queryKey: ['spesa', 'suggest', orgId, term],
     enabled: !!orgId && term.length >= 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('items')
-        .select('id, name, unit')
+        .select('id, name, unit, location')
         .eq('org_id', orgId!)
-        .eq('location', location)
         .ilike('name', `%${escapeLike(term)}%`)
         .order('name')
-        .limit(4);
+        .limit(8);
       if (error) throw error;
       return data;
     },
   });
-  const matches = (suggestions.data ?? []).filter((s) => !linkedIds.has(s.id));
-  const exactExists = (suggestions.data ?? []).some(
-    (s) => s.name.toLowerCase() === term.toLowerCase(),
-  );
+  const matches = (suggestions.data ?? [])
+    .filter((s) => !linkedIds.has(s.id))
+    .sort((a, b) => Number(!locations.includes(a.location)) - Number(!locations.includes(b.location)))
+    .slice(0, 5);
+  const exactExists = (suggestions.data ?? []).some((s) => s.name.toLowerCase() === term.toLowerCase());
 
   function addEntries(entries: NewListEntry[]) {
     setAddError(null);
@@ -94,17 +143,20 @@ export function ListaAperta({ list }: { list: ListSummary }) {
     });
   }
 
-  function openNew(params: { mode: 'inventory' | 'new-product' | 'list-only'; name: string; itemId?: string }) {
+  function openNew(params: {
+    mode: 'inventory' | 'new-product' | 'list-only';
+    name: string;
+    itemId?: string;
+  }) {
     setText('');
     setAddError(null);
     router.push({
       pathname: '/spesa/voce',
-      params: { listId, location, ...params },
+      params: { listId, location, locations: locations.join(','), ...params },
     });
   }
 
-  const shareText = () =>
-    openListText({ name: list.name!, location, created_at: list.created_at }, sorted);
+  const shareText = () => openListText({ name: list.name!, locations, created_at: list.created_at }, sorted);
 
   function share() {
     shareOnWhatsApp(shareText()).catch(() => Alert.alert('Condivisione non riuscita', 'Riprova tra poco.'));
@@ -115,6 +167,13 @@ export function ListaAperta({ list }: { list: ListSummary }) {
   }
 
   function onToggle(i: ListItem) {
+    if (i.run_id) {
+      Alert.alert(
+        'Già registrato',
+        'Questo articolo fa parte di una spesa già registrata e non si può togliere la spunta.',
+      );
+      return;
+    }
     Haptics.selectionAsync();
     toggle.mutate(
       { id: i.id, checked: !i.checked },
@@ -139,11 +198,8 @@ export function ListaAperta({ list }: { list: ListSummary }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.topBar}>
           <Pressable onPress={() => router.back()} style={styles.back} hitSlop={8}>
             <Ionicons name="chevron-back" size={22} color={colors.accent} />
@@ -178,9 +234,15 @@ export function ListaAperta({ list }: { list: ListSummary }) {
         </View>
 
         <View style={styles.header}>
-          <View style={styles.titleRow}>
-            <Text style={[type.title, styles.flex]} numberOfLines={2}>{list.name}</Text>
-            <Text style={styles.tag}>{where}</Text>
+          <Text style={type.title} numberOfLines={2}>
+            {list.name}
+          </Text>
+          <View style={styles.tags}>
+            {locations.map((l) => (
+              <Text key={l} style={styles.tag}>
+                {locationLabel(l)}
+              </Text>
+            ))}
           </View>
 
           {sorted.length > 0 && (
@@ -200,7 +262,7 @@ export function ListaAperta({ list }: { list: ListSummary }) {
               <Text style={[styles.lowText, styles.flex]}>
                 {lowMissing.length === 1
                   ? `${lowMissing[0].name} è sotto scorta`
-                  : `${lowMissing.length} prodotti di ${where} sotto scorta`}
+                  : `${lowMissing.length} prodotti sotto scorta in ${where}`}
               </Text>
               <Pressable
                 onPress={() =>
@@ -249,7 +311,11 @@ export function ListaAperta({ list }: { list: ListSummary }) {
                   icon="cube-outline"
                   iconColor={colors.accent}
                   title={s.name}
-                  hint={`in ${where}`}
+                  hint={
+                    locations.includes(s.location)
+                      ? locationLabel(s.location)
+                      : `${locationLabel(s.location)} · si aggiunge`
+                  }
                   onPress={() => openNew({ mode: 'inventory', itemId: s.id, name: s.name })}
                 />
               ))}
@@ -258,7 +324,7 @@ export function ListaAperta({ list }: { list: ListSummary }) {
                   icon="add-circle-outline"
                   iconColor={colors.accent}
                   title={`Nuovo prodotto: “${term}”`}
-                  hint={`anche in ${where}`}
+                  hint="anche in inventario"
                   onPress={() => openNew({ mode: 'new-product', name: term })}
                 />
               )}
@@ -274,9 +340,30 @@ export function ListaAperta({ list }: { list: ListSummary }) {
           {addError && <Text style={styles.error}>{addError}</Text>}
         </View>
 
+        {open.length > 0 && groups.length > 1 && (
+          <View style={styles.viewSwitch}>
+            <Pressable
+              onPress={() => setGrouped(true)}
+              style={[styles.viewOption, grouped && styles.viewOptionActive]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: grouped }}
+            >
+              <Text style={[styles.viewText, grouped && styles.viewTextActive]}>Per luogo</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setGrouped(false)}
+              style={[styles.viewOption, !grouped && styles.viewOptionActive]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: !grouped }}
+            >
+              <Text style={[styles.viewText, !grouped && styles.viewTextActive]}>Tutto insieme</Text>
+            </Pressable>
+          </View>
+        )}
+
         <FlatList
-          data={sorted}
-          keyExtractor={(i) => i.id}
+          data={entries}
+          keyExtractor={(e) => (e.kind === 'header' ? `h-${e.key}` : e.item.id)}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.list}
           refreshControl={
@@ -299,28 +386,83 @@ export function ListaAperta({ list }: { list: ListSummary }) {
               </Text>
             )
           }
-          renderItem={({ item: i, index }) => (
-            <Row
-              item={i}
-              where={where}
-              isFirst={index === 0}
-              isLast={index === sorted.length - 1}
-              onToggle={() => onToggle(i)}
-              onOpen={() =>
-                router.push({ pathname: '/spesa/voce', params: { listId, location, id: i.id } })
-              }
-              onMinus={() => onMinus(i)}
-              onPlus={() => {
-                Haptics.selectionAsync();
-                setQty.mutate({ id: i.id, qty: roundQty(i.qty + stepFor(i.unit)) });
-              }}
-            />
-          )}
+          ListFooterComponent={
+            runList.length > 0 ? (
+              <View style={styles.runs}>
+                <View style={styles.runsHead}>
+                  <Text style={type.label}>Spese registrate · {runList.length}</Text>
+                  <Text style={styles.runsTotal}>{formatEuro(spent)}</Text>
+                </View>
+                {runList.map((r, index) => (
+                  <RunCard
+                    key={r.id}
+                    run={r}
+                    index={index}
+                    listId={listId}
+                    orgId={orgId}
+                    items={sorted.filter((i) => i.run_id === r.id)}
+                    payerName={payerLabel(r.paid_by, r.paid_by_user)}
+                  />
+                ))}
+              </View>
+            ) : null
+          }
+          renderItem={({ item: entry }) =>
+            entry.kind === 'header' ? (
+              <View style={styles.groupHead}>
+                <Text style={styles.groupTitle}>{entry.label}</Text>
+                <Text style={type.caption}>{entry.count}</Text>
+              </View>
+            ) : (
+              <Row
+                item={entry.item}
+                where={locationLabel(location)}
+                isFirst={entry.isFirst}
+                isLast={entry.isLast}
+                onToggle={() => onToggle(entry.item)}
+                onOpen={() =>
+                  router.push({
+                    pathname: '/spesa/voce',
+                    params: { listId, location, locations: locations.join(','), id: entry.item.id },
+                  })
+                }
+                onMinus={() => onMinus(entry.item)}
+                onPlus={() => {
+                  Haptics.selectionAsync();
+                  setQty.mutate({
+                    id: entry.item.id,
+                    qty: roundQty(entry.item.qty + stepFor(entry.item.unit)),
+                  });
+                }}
+              />
+            )
+          }
         />
 
         <View style={styles.footer}>
+          {unregistered > 0 ? (
+            <Pressable
+              onPress={() =>
+                router.push({ pathname: '/spesa/chiudi/[id]', params: { id: listId, mode: 'registra' } })
+              }
+              style={({ pressed }) => [styles.registerButton, pressed && styles.registerPressed]}
+            >
+              <Ionicons name="save-outline" size={18} color={colors.onAccent} />
+              <Text style={styles.registerText}>
+                Registra la spesa · {unregistered} {unregistered === 1 ? 'preso' : 'presi'}
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={[type.caption, styles.footerHint]}>
+              {done === 0
+                ? 'Spunta quello che compri, poi registra la spesa.'
+                : 'Tutto registrato. Puoi continuare ad aggiungere voci.'}
+            </Text>
+          )}
           <Pressable
-            onPress={() => router.push({ pathname: '/spesa/chiudi/[id]', params: { id: listId } })}
+            onPress={() =>
+              router.push({ pathname: '/spesa/chiudi/[id]', params: { id: listId, mode: 'chiudi' } })
+            }
             disabled={done === 0}
             style={({ pressed }) => [
               styles.closeButton,
@@ -328,9 +470,7 @@ export function ListaAperta({ list }: { list: ListSummary }) {
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={[styles.closeText, done === 0 && { color: colors.muted }]}>
-              {done === 0 ? 'Spunta quello che hai preso' : 'Chiudi la lista · inserisci i prezzi'}
-            </Text>
+            <Text style={[styles.closeText, done === 0 && { color: colors.muted }]}>Chiudi la lista</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -357,7 +497,9 @@ function Option({
       style={({ pressed }) => [styles.option, pressed && { backgroundColor: colors.bg }]}
     >
       <Ionicons name={icon} size={18} color={iconColor} />
-      <Text style={[type.body, styles.flex]} numberOfLines={1}>{title}</Text>
+      <Text style={[type.body, styles.flex]} numberOfLines={1}>
+        {title}
+      </Text>
       <Text style={type.caption}>{hint}</Text>
     </Pressable>
   );
@@ -388,16 +530,14 @@ function Row({
   const dest = item.items ? locationLabel(item.items.location) : where;
   const destination = item.checked
     ? linked
-      ? `Aggiunto all’inventario di ${dest}`
-      : 'Preso'
+      ? `In inventario · ${dest} · da registrare`
+      : 'Preso · da registrare'
     : linked
       ? `Va in inventario · ${dest}`
       : 'Solo in lista';
 
   return (
-    <View
-      style={[styles.row, isFirst && styles.first, isLast && styles.last, !isLast && styles.divider]}
-    >
+    <View style={[styles.row, isFirst && styles.first, isLast && styles.last, !isLast && styles.divider]}>
       <Pressable
         onPress={onToggle}
         accessibilityRole="checkbox"
@@ -428,21 +568,21 @@ function Row({
             {item.note}
           </Text>
         )}
-        <Text style={[type.caption, item.checked && linked && { color: colors.ok }]}>
-          {destination}
-        </Text>
+        <Text style={[type.caption, item.checked && linked && { color: colors.ok }]}>{destination}</Text>
       </Pressable>
 
       {item.checked ? (
         <View style={styles.qty}>
           <Text style={styles.qtyNumber}>{formatQty(item.qty)}</Text>
-          <Text style={styles.qtyUnit}>{item.unit}</Text>
+          <Text style={styles.qtyUnit}>{unitWord(item.qty, item.unit)}</Text>
         </View>
       ) : (
         <>
           <Pressable
             onPress={onMinus}
-            accessibilityLabel={item.qty - step > 0 ? `Togli ${formatQty(step)} ${item.unit}` : 'Togli dalla lista'}
+            accessibilityLabel={
+              item.qty - step > 0 ? `Togli ${formatQty(step)} ${item.unit}` : 'Togli dalla lista'
+            }
             style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}
           >
             <Ionicons
@@ -453,7 +593,7 @@ function Row({
           </Pressable>
           <Pressable onPress={onOpen} style={styles.qty} accessibilityLabel="Cambia quantità e unità">
             <Text style={styles.qtyNumber}>{formatQty(item.qty)}</Text>
-            <Text style={styles.qtyUnit}>{item.unit}</Text>
+            <Text style={styles.qtyUnit}>{unitWord(item.qty, item.unit)}</Text>
           </Pressable>
           <Pressable
             onPress={onPlus}

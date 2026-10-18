@@ -1,25 +1,12 @@
 import { Linking, Share } from 'react-native';
-import { formatQty, locationLabel, type Location } from '@/lib/items';
-import { dateFromIso, dishNames, formatEuro, type ListItem } from '@/lib/spesa';
+import { LOCATIONS, locationLabel, qtyWithUnit, type Location } from '@/lib/items';
+import { dateFromIso, dishNames, formatEuro, locationsLabel, type ListItem, type Run } from '@/lib/spesa';
 
 const RULE = '━━━━━━━━━━━━━━━━';
 const SIGNATURE = '🌞 _Pro Loco Tempo Libero Vigne_';
 const TABLE_WIDTH = 30;
 
-const UNIT_FORMS: Record<string, [string, string]> = {
-  pezzi: ['pezzo', 'pezzi'],
-  confezioni: ['confezione', 'confezioni'],
-  bottiglie: ['bottiglia', 'bottiglie'],
-  rotoli: ['rotolo', 'rotoli'],
-  casse: ['cassa', 'casse'],
-  litri: ['litro', 'litri'],
-};
-
-export function quantityLabel(qty: number, unit: string) {
-  const forms = UNIT_FORMS[unit];
-  const word = forms ? (Number(qty) === 1 ? forms[0] : forms[1]) : unit;
-  return `${formatQty(qty)} ${word}`;
-}
+export const quantityLabel = (qty: number, unit: string) => qtyWithUnit(qty, unit);
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -43,7 +30,7 @@ function doneLine(i: ListItem) {
 }
 
 export function openListText(
-  list: { name: string; location: Location; created_at?: string | null },
+  list: { name: string; locations: Location[]; created_at?: string | null },
   items: ListItem[],
 ) {
   const todo = items.filter((i) => !i.checked);
@@ -52,13 +39,27 @@ export function openListText(
 
   const parts = [
     `🛒 *${list.name.trim().toUpperCase()}*`,
-    [`📍 ${locationLabel(list.location)}`, created && `🗓️ ${created}`].filter(Boolean).join('   '),
+    [`📍 ${locationsLabel(list.locations)}`, created && `🗓️ ${created}`].filter(Boolean).join('   '),
     RULE,
     '',
   ];
 
   if (todo.length) {
-    parts.push(`*DA PRENDERE* (${todo.length})`, '', ...todo.map(todoBlock));
+    parts.push(`*DA PRENDERE* (${todo.length})`);
+    const keys: (Location | 'libero')[] = [...LOCATIONS.map((l) => l.value), 'libero'];
+    const groups = keys
+      .map((key) => ({
+        key,
+        items: todo.filter((i) => (i.items?.location ?? 'libero') === key),
+      }))
+      .filter((g) => g.items.length > 0);
+    if (groups.length > 1) {
+      groups.forEach((g) => {
+        parts.push('', `_${g.key === 'libero' ? 'Altro' : locationLabel(g.key)}_`, ...g.items.map(todoBlock));
+      });
+    } else {
+      parts.push('', ...todo.map(todoBlock));
+    }
   } else {
     parts.push('🎉 *Tutto preso!*');
   }
@@ -78,41 +79,49 @@ function tableRow(left: string, right: string) {
 }
 
 export function closedListText(
-  list: { name: string; location: Location; shop: string | null; closed_on: string | null },
-  items: ListItem[],
-  payer: string,
+  list: { name: string; locations: Location[] },
+  runs: { run: Run; payer: string; items: ListItem[] }[],
 ) {
-  const bought = items.filter((i) => i.checked);
-  const total = bought.reduce((sum, i) => sum + (i.price_cents ?? 0), 0);
-  const missing = bought.filter((i) => i.price_cents == null).length;
-
-  const table = bought.map((i) =>
-    tableRow(
-      `${i.name.trim()} ${quantityLabel(i.qty, i.unit)}`,
-      i.price_cents != null ? formatEuro(i.price_cents) : '—',
-    ),
-  );
+  const total = runs.reduce((sum, r) => sum + r.run.total_cents, 0);
+  const toRefund = runs
+    .filter((r) => r.run.paid_by === 'volontario' && !r.run.reimbursed)
+    .reduce((sum, r) => sum + r.run.total_cents, 0);
+  const missing = runs.reduce((sum, r) => sum + r.run.receipts_missing + r.run.prices_missing, 0);
 
   const parts = [
     '🧾 *RESOCONTO SPESA*',
     `*${list.name.trim()}*`,
-    [
-      list.closed_on && `🗓️ ${longDate(list.closed_on, true)}`,
-      list.shop && `🏪 ${list.shop}`,
-      `📍 ${locationLabel(list.location)}`,
-    ]
-      .filter(Boolean)
-      .join('   '),
+    `📍 ${locationsLabel(list.locations)}   🛍️ ${runs.length} ${runs.length === 1 ? 'spesa' : 'spese'}`,
     RULE,
-    '```',
-    ...table,
-    '```',
-    RULE,
-    `💶 *Totale ${formatEuro(total)}*`,
   ];
 
-  if (missing) parts.push(`⚠️ _${missing === 1 ? 'Manca 1 prezzo' : `Mancano ${missing} prezzi`}_`);
-  parts.push(`👤 ${capitalize(payer)}`, '', SIGNATURE);
+  runs.forEach(({ run, payer, items }, index) => {
+    const head = [`*${index + 1} · ${longDate(run.run_date)}*`, run.shop].filter(Boolean).join(' · ');
+    parts.push('', `${head} — *${formatEuro(run.total_cents)}*`);
+    if (items.length) {
+      parts.push(
+        '```',
+        ...items.map((i) =>
+          tableRow(
+            `${i.name.trim()} ${quantityLabel(i.qty, i.unit)}`,
+            i.price_cents != null ? formatEuro(i.price_cents) : run.receipts_count ? '' : '—',
+          ).trimEnd(),
+        ),
+        '```',
+      );
+    }
+    const receipts = run.receipts_count
+      ? ` · ${run.receipts_count} ${run.receipts_count === 1 ? 'scontrino' : 'scontrini'}`
+      : '';
+    const refund =
+      run.paid_by === 'volontario' ? (run.reimbursed ? ' · rimborsata' : ' · da rimborsare') : '';
+    parts.push(`👤 ${payer}${refund}${receipts}`);
+  });
+
+  parts.push('', RULE, `💶 *Totale ${formatEuro(total)}*`);
+  if (toRefund) parts.push(`↩️ _Da rimborsare ai volontari: ${formatEuro(toRefund)}_`);
+  if (missing) parts.push(`⚠️ _Alcuni importi sono ancora da inserire_`);
+  parts.push('', SIGNATURE);
   return parts.join('\n');
 }
 

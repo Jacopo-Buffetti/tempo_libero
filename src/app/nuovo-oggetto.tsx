@@ -116,14 +116,8 @@ export default function NuovoOggetto() {
         <View style={styles.back} />
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.field}>
             <Text style={type.label}>Nome</Text>
             <TextInput
@@ -161,9 +155,7 @@ export default function NuovoOggetto() {
                       size={26}
                       color={active ? colors.onAccent : colors.text}
                     />
-                    <Text style={[styles.tileText, active && styles.tileTextActive]}>
-                      {l.label}
-                    </Text>
+                    <Text style={[styles.tileText, active && styles.tileTextActive]}>{l.label}</Text>
                   </Pressable>
                 );
               })}
@@ -188,9 +180,7 @@ export default function NuovoOggetto() {
                     accessibilityState={{ selected: active }}
                     style={[styles.segmentItem, active && styles.segmentItemActive]}
                   >
-                    <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                      {k.label}
-                    </Text>
+                    <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{k.label}</Text>
                   </Pressable>
                 );
               })}

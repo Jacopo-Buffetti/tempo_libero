@@ -23,6 +23,10 @@ import {
   locationLabel,
   roundQty,
   unitInfo,
+  qtyWithUnit,
+  LOCATIONS,
+  type Kind,
+  type Location,
 } from '@/lib/items';
 import {
   dishNames,
@@ -56,8 +60,7 @@ export default function VoceLista() {
   const membership = useMembership();
   const orgId = membership.data?.org_id;
   const listId = params.listId;
-  const location = isLocation(params.location) ? params.location : 'magazzino';
-  const where = locationLabel(location);
+  const location = isLocation(params.location) ? params.location : 'cucina';
 
   const listItems = useListItems(listId);
   const existing = params.id ? listItems.data?.find((i) => i.id === params.id) : undefined;
@@ -70,7 +73,7 @@ export default function VoceLista() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('items')
-        .select('id, name, unit, qty, min_qty, kind')
+        .select('id, name, unit, qty, min_qty, kind, location')
         .eq('id', productId!)
         .maybeSingle();
       if (error) throw error;
@@ -78,17 +81,15 @@ export default function VoceLista() {
     },
   });
 
-  const mode: Mode = isEdit
-    ? existing?.item_id
-      ? 'inventory'
-      : 'list-only'
-    : (params.mode ?? 'list-only');
+  const mode: Mode = isEdit ? (existing?.item_id ? 'inventory' : 'list-only') : (params.mode ?? 'list-only');
   const linked = mode === 'inventory';
 
   const [name, setName] = useState(params.name ?? '');
   const [unit, setUnit] = useState('pezzi');
   const [qty, setQty] = useState(1);
   const [note, setNote] = useState('');
+  const [newLocation, setNewLocation] = useState<Location>(location);
+  const [kind, setKind] = useState<Kind>('consumabile');
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -149,7 +150,8 @@ export default function VoceLista() {
           unit,
           note,
           itemId: linked ? productId : null,
-          createIn: mode === 'new-product' ? location : undefined,
+          createIn: mode === 'new-product' ? newLocation : undefined,
+          kind: mode === 'new-product' ? kind : undefined,
           dishId: params.dishId ?? null,
         },
       ],
@@ -184,9 +186,15 @@ export default function VoceLista() {
   const dishName = params.dishName ?? (existing ? dishNames(existing) : undefined);
   const destination =
     mode === 'inventory'
-      ? { icon: 'cube-outline' as const, text: `Quando la spunti va in inventario · ${where}` }
+      ? {
+          icon: 'cube-outline' as const,
+          text: `Quando la spunti va in inventario · ${locationLabel((p?.location as Location) ?? location)}`,
+        }
       : mode === 'new-product'
-        ? { icon: 'add-circle-outline' as const, text: `Nuovo prodotto: verrà creato in ${where}` }
+        ? {
+            icon: 'add-circle-outline' as const,
+            text: `Nuovo prodotto: verrà creato in ${locationLabel(newLocation)}`,
+          }
         : { icon: 'create-outline' as const, text: 'Solo in lista, non va in inventario' };
 
   return (
@@ -200,10 +208,7 @@ export default function VoceLista() {
         <View style={styles.back} />
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {!!dishName && (
             <View style={[styles.destination, styles.dish]}>
@@ -225,7 +230,7 @@ export default function VoceLista() {
                 <Text style={type.body}>{name}</Text>
                 {p && (
                   <Text style={type.caption}>
-                    In inventario: {formatQty(p.qty)} {p.unit}
+                    In inventario: {qtyWithUnit(p.qty, p.unit)}
                     {p.min_qty != null ? ` · minimo ${formatQty(p.min_qty)}` : ''}
                   </Text>
                 )}
@@ -242,18 +247,60 @@ export default function VoceLista() {
             )}
           </View>
 
+          {mode === 'new-product' && (
+            <>
+              <View style={styles.field}>
+                <Text style={type.label}>Dove va</Text>
+                <View style={styles.chips}>
+                  {LOCATIONS.map((l) => (
+                    <Chip
+                      key={l.value}
+                      label={l.label}
+                      variant="accent"
+                      active={newLocation === l.value}
+                      onPress={() => setNewLocation(l.value)}
+                    />
+                  ))}
+                </View>
+              </View>
+              <View style={styles.field}>
+                <Text style={type.label}>Tipo</Text>
+                <View style={styles.chips}>
+                  <Chip
+                    label="Si consuma"
+                    variant="accent"
+                    active={kind === 'consumabile'}
+                    onPress={() => setKind('consumabile')}
+                  />
+                  <Chip
+                    label="Attrezzatura"
+                    variant="accent"
+                    active={kind === 'attrezzatura'}
+                    onPress={() => setKind('attrezzatura')}
+                  />
+                </View>
+              </View>
+            </>
+          )}
+
           <View style={styles.field}>
             <Text style={type.label}>Unità</Text>
             {linked ? (
               <Text style={type.caption}>
-                In {unitInfo(unit).label}, come il prodotto in inventario, così la quantità si
-                somma correttamente.
+                In {unitInfo(unit).label}, come il prodotto in inventario, così la quantità si somma
+                correttamente.
               </Text>
             ) : (
               <>
                 <View style={styles.chips}>
                   {COUNT_UNITS.map((u) => (
-                    <Chip key={u} label={u} variant="accent" active={unit === u} onPress={() => changeUnit(u)} />
+                    <Chip
+                      key={u}
+                      label={u}
+                      variant="accent"
+                      active={unit === u}
+                      onPress={() => changeUnit(u)}
+                    />
                   ))}
                 </View>
                 <View style={styles.chips}>
@@ -283,8 +330,7 @@ export default function VoceLista() {
           </View>
           {p && p.min_qty != null && p.qty < p.min_qty && (
             <Text style={[type.caption, { color: colors.warn }]}>
-              Per tornare alla scorta minima ne servono {formatQty(roundQty(p.min_qty - p.qty))}{' '}
-              {p.unit}.
+              Per tornare alla scorta minima ne servono {qtyWithUnit(roundQty(p.min_qty - p.qty), p.unit)}.
             </Text>
           )}
 
@@ -323,9 +369,7 @@ export default function VoceLista() {
             {busy ? (
               <ActivityIndicator color={colors.onAccent} />
             ) : (
-              <Text style={styles.saveText}>
-                {isEdit ? 'Salva' : `Aggiungi ${formatQty(qty)} ${unit}`}
-              </Text>
+              <Text style={styles.saveText}>{isEdit ? 'Salva' : `Aggiungi ${formatQty(qty)} ${unit}`}</Text>
             )}
           </Pressable>
         </View>

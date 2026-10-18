@@ -6,7 +6,13 @@ export const styles = StyleSheet.create({
   container: { flex: 1, padding: space(5), justifyContent: 'center', gap: space(4) },
   header: { gap: space(4), marginBottom: space(4), alignItems: 'center' },
   logo: { width: '100%', maxWidth: 320, aspectRatio: 900 / 317 },
-  subtitle: { fontFamily: font.medium, fontSize: 16, color: colors.muted, lineHeight: 22, textAlign: 'center' },
+  subtitle: {
+    fontFamily: font.medium,
+    fontSize: 16,
+    color: colors.muted,
+    lineHeight: 22,
+    textAlign: 'center',
+  },
   field: { gap: space(1.5) },
   input: {
     height: 52,

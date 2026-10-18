@@ -42,9 +42,14 @@ export default function AppLayout() {
         name="menu"
         options={{
           title: 'Menù',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="restaurant-outline" color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons name="restaurant-outline" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="calendario"
+        options={{
+          title: 'Calendario',
+          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" color={color} size={size} />,
         }}
       />
     </Tabs>

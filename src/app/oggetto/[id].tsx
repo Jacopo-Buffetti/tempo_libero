@@ -1,12 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,11 +51,7 @@ export default function DettaglioOggetto() {
     queryKey: itemsKeys.detail(id),
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('items')
-        .select(ITEM_COLUMNS)
-        .eq('id', id!)
-        .maybeSingle();
+      const { data, error } = await supabase.from('items').select(ITEM_COLUMNS).eq('id', id!).maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -211,9 +200,7 @@ export default function DettaglioOggetto() {
             <View style={styles.flex}>
               <Text style={type.body}>{isEquipment ? 'Totale pezzi' : 'Quantità'}</Text>
               <Text style={type.caption}>
-                {isEquipment
-                  ? 'Pezzi acquistati o persi'
-                  : `+ e − di ${formatQty(step)} ${it.unit}`}
+                {isEquipment ? 'Pezzi acquistati o persi' : `+ e − di ${formatQty(step)} ${it.unit}`}
               </Text>
             </View>
             <Pressable
@@ -303,17 +290,12 @@ export default function DettaglioOggetto() {
             {movements.isLoading ? (
               <ActivityIndicator color={colors.accent} style={{ padding: space(5) }} />
             ) : !movements.data?.length ? (
-              <Text style={[type.caption, { padding: space(4) }]}>
-                Ancora nessun movimento registrato.
-              </Text>
+              <Text style={[type.caption, { padding: space(4) }]}>Ancora nessun movimento registrato.</Text>
             ) : (
               movements.data.map((m, i) => (
                 <View
                   key={m.id}
-                  style={[
-                    styles.historyRow,
-                    i < movements.data!.length - 1 && styles.cardDivider,
-                  ]}
+                  style={[styles.historyRow, i < movements.data!.length - 1 && styles.cardDivider]}
                 >
                   <Text style={[type.body, styles.flex]}>{describe(m)}</Text>
                   <View style={styles.historyMeta}>
