@@ -5,7 +5,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -17,9 +16,11 @@ import * as Haptics from 'expo-haptics';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import {
+  COUNT_UNITS,
   LOCATIONS,
-  UNITS,
+  MEASURE_UNITS,
   isLocation,
+  unitInfo,
   itemsKeys,
   locationLabel,
   type Kind,
@@ -28,7 +29,8 @@ import {
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
 import { Stepper } from '@/components/Stepper';
-import { colors, font, radius, space, touch, type } from '@/theme/tokens';
+import { colors, type } from '@/theme/tokens';
+import { styles } from '@/styles/screens/nuovoOggetto';
 
 const LOCATION_ICONS: Record<Location, keyof typeof Ionicons.glyphMap> = {
   magazzino: 'cube-outline',
@@ -87,6 +89,14 @@ export default function NuovoOggetto() {
       );
     },
   });
+
+  function changeUnit(u: string) {
+    setUnit(u);
+    if (unitInfo(u).decimals === 0) {
+      setQty((q) => Math.round(q));
+      setMinQty((q) => Math.round(q));
+    }
+  }
 
   function changeQty(n: number) {
     setQty(n);
@@ -149,7 +159,7 @@ export default function NuovoOggetto() {
                     <Ionicons
                       name={LOCATION_ICONS[l.value]}
                       size={26}
-                      color={active ? '#FFFFFF' : colors.text}
+                      color={active ? colors.onAccent : colors.text}
                     />
                     <Text style={[styles.tileText, active && styles.tileTextActive]}>
                       {l.label}
@@ -188,15 +198,21 @@ export default function NuovoOggetto() {
           </View>
 
           <View style={styles.field}>
-            <Text style={type.label}>Unità</Text>
+            <Text style={type.label}>Si conta in</Text>
             <View style={styles.chips}>
-              {UNITS.map((u) => (
+              {COUNT_UNITS.map((u) => (
+                <Chip key={u} label={u} variant="accent" active={unit === u} onPress={() => changeUnit(u)} />
+              ))}
+            </View>
+            <Text style={type.label}>Si pesa o si misura in</Text>
+            <View style={styles.chips}>
+              {MEASURE_UNITS.map((u) => (
                 <Chip
                   key={u}
-                  label={u}
+                  label={unitInfo(u).label}
                   variant="accent"
                   active={unit === u}
-                  onPress={() => setUnit(u)}
+                  onPress={() => changeUnit(u)}
                 />
               ))}
             </View>
@@ -204,17 +220,20 @@ export default function NuovoOggetto() {
 
           <View style={styles.card}>
             <View style={[styles.cardRow, styles.cardDivider]}>
-              <Text style={[type.body, styles.flex]}>Quantità</Text>
-              <Stepper label="Quantità" value={qty} onChange={changeQty} />
+              <View style={styles.flex}>
+                <Text style={type.body}>Quantità</Text>
+                <Text style={type.caption}>In {unit}</Text>
+              </View>
+              <Stepper label="Quantità" value={qty} onChange={changeQty} unit={unit} />
             </View>
 
             {kind === 'consumabile' ? (
               <View style={styles.cardRow}>
                 <View style={styles.flex}>
                   <Text style={type.body}>Scorta minima</Text>
-                  <Text style={type.caption}>Sotto questa va in lista spesa</Text>
+                  <Text style={type.caption}>In {unit}: sotto questa va in lista spesa</Text>
                 </View>
-                <Stepper label="Scorta minima" value={minQty} onChange={setMinQty} />
+                <Stepper label="Scorta minima" value={minQty} onChange={setMinQty} unit={unit} />
               </View>
             ) : (
               <View style={styles.cardRow}>
@@ -241,7 +260,7 @@ export default function NuovoOggetto() {
             ]}
           >
             {save.isPending ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.onAccent} />
             ) : (
               <Text style={styles.saveText}>Salva in {label}</Text>
             )}
@@ -251,99 +270,3 @@ export default function NuovoOggetto() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  flex: { flex: 1 },
-
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space(2),
-    paddingVertical: space(1),
-  },
-  back: { flexDirection: 'row', alignItems: 'center', minHeight: touch, width: 96 },
-  backText: { fontFamily: font.bold, fontSize: 15, color: colors.accent },
-
-  content: { padding: space(5), gap: space(5) },
-  field: { gap: space(2) },
-  input: {
-    height: 50,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: space(3.5),
-    fontFamily: font.bold,
-    fontSize: 16,
-    color: colors.text,
-  },
-
-  tiles: { flexDirection: 'row', gap: space(2) },
-  tile: {
-    flex: 1,
-    height: 88,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space(1.5),
-  },
-  tileActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  tileText: { fontFamily: font.bold, fontSize: 14, color: colors.text },
-  tileTextActive: { color: '#FFFFFF' },
-
-  segment: {
-    flexDirection: 'row',
-    gap: space(1.5),
-    backgroundColor: colors.segment,
-    borderRadius: radius.md,
-    padding: space(1),
-  },
-  segmentItem: {
-    flex: 1,
-    minHeight: touch,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentItemActive: {
-    backgroundColor: colors.surface,
-    shadowColor: colors.text,
-    shadowOpacity: 0.12,
-    shadowRadius: 2,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
-  },
-  segmentText: { fontFamily: font.medium, fontSize: 14, color: colors.muted },
-  segmentTextActive: { fontFamily: font.bold, color: colors.text },
-
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space(2) },
-
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space(3),
-    paddingVertical: space(3),
-    paddingLeft: space(4),
-    paddingRight: space(3),
-  },
-  cardDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-
-  error: { fontFamily: font.bold, fontSize: 14, color: colors.warn },
-
-  footer: { paddingHorizontal: space(5), paddingTop: space(3), paddingBottom: space(3) },
-  saveButton: {
-    height: 54,
-    borderRadius: radius.lg,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveDisabled: { opacity: 0.45 },
-  saveText: { fontFamily: font.black, fontSize: 16, color: '#FFFFFF' },
-});

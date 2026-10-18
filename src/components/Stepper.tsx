@@ -1,93 +1,79 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, font, touch } from '@/theme/tokens';
+import { formatQty, parseQty, roundQty, unitInfo } from '@/lib/items';
+import { styles } from '@/styles/components/stepper';
 
 type Props = {
   label: string;
   value: number;
   onChange: (value: number) => void;
+  unit?: string;
   min?: number;
   max?: number;
 };
 
-/** − numero + ; il numero si può anche scrivere (comodo per 312 sedie) */
-export function Stepper({ label, value, onChange, min = 0, max = 99999 }: Props) {
-  const clamp = (n: number) => Math.min(max, Math.max(min, n));
+export function Stepper({ label, value, onChange, unit = 'pezzi', min = 0, max = 99999 }: Props) {
+  const { step, decimals } = unitInfo(unit);
+  const clamp = (n: number) => Math.min(max, Math.max(min, roundQty(n)));
 
-  function step(delta: number) {
-    const next = clamp(value + delta);
+  const [text, setText] = useState(formatQty(value));
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (!editing) setText(formatQty(value));
+  }, [value, editing]);
+
+  function stepBy(direction: 1 | -1) {
+    const next = clamp(value + direction * step);
     if (next !== value) {
       Haptics.selectionAsync();
       onChange(next);
     }
   }
 
-  function type(text: string) {
-    const digits = text.replace(/\D/g, '');
-    onChange(digits === '' ? min : clamp(parseInt(digits, 10)));
+  function commit() {
+    setEditing(false);
+    const n = parseQty(text, unit);
+    const next = n == null ? min : clamp(n);
+    setText(formatQty(next));
+    if (next !== value) onChange(next);
   }
 
   return (
     <View style={styles.row}>
       <Pressable
-        onPress={() => step(-1)}
+        onPress={() => stepBy(-1)}
         disabled={value <= min}
-        accessibilityLabel={`${label}: togli uno`}
-        style={({ pressed }) => [
-          styles.button,
-          value <= min && styles.disabled,
-          pressed && styles.pressed,
-        ]}
+        accessibilityLabel={`${label}: togli ${formatQty(step)}`}
+        style={({ pressed }) => [styles.button, value <= min && styles.disabled, pressed && styles.pressed]}
       >
         <Text style={styles.buttonText}>−</Text>
       </Pressable>
 
       <TextInput
-        value={String(value)}
-        onChangeText={type}
-        keyboardType="number-pad"
+        value={text}
+        onChangeText={(t) => {
+          setEditing(true);
+          setText(decimals > 0 ? t.replace(/[^\d,.]/g, '') : t.replace(/\D/g, ''));
+        }}
+        onFocus={() => setEditing(true)}
+        onEndEditing={commit}
+        onSubmitEditing={commit}
+        keyboardType={decimals > 0 ? 'decimal-pad' : 'number-pad'}
         selectTextOnFocus
         accessibilityLabel={label}
         style={styles.input}
-        maxLength={5}
+        maxLength={8}
       />
 
       <Pressable
-        onPress={() => step(1)}
+        onPress={() => stepBy(1)}
         disabled={value >= max}
-        accessibilityLabel={`${label}: aggiungi uno`}
-        style={({ pressed }) => [
-          styles.button,
-          value >= max && styles.disabled,
-          pressed && styles.pressed,
-        ]}
+        accessibilityLabel={`${label}: aggiungi ${formatQty(step)}`}
+        style={({ pressed }) => [styles.button, value >= max && styles.disabled, pressed && styles.pressed]}
       >
         <Text style={styles.buttonText}>+</Text>
       </Pressable>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  button: {
-    width: touch,
-    height: touch,
-    borderRadius: 12,
-    backgroundColor: colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disabled: { opacity: 0.35 },
-  pressed: { backgroundColor: colors.segment },
-  buttonText: { fontFamily: font.bold, fontSize: 20, color: colors.text },
-  input: {
-    minWidth: 56,
-    height: touch,
-    textAlign: 'center',
-    fontFamily: font.black,
-    fontSize: 20,
-    color: colors.text,
-    padding: 0,
-  },
-});

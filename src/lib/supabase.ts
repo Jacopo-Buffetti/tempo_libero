@@ -20,7 +20,6 @@ export const supabase = createClient<Database>(url, key, {
   },
 });
 
-// Rinnova il token solo quando l'app è in primo piano
 if (Platform.OS !== 'web') {
   AppState.addEventListener('change', (state) => {
     if (state === 'active') supabase.auth.startAutoRefresh();

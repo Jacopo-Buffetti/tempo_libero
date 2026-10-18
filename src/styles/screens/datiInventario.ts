@@ -1,0 +1,118 @@
+import { StyleSheet } from 'react-native';
+import { colors, font, radius, space, touch } from '@/theme/tokens';
+
+export const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1 },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: space(2),
+    paddingVertical: space(1),
+  },
+  back: { flexDirection: 'row', alignItems: 'center', minHeight: touch, width: 110 },
+  backText: { fontFamily: font.bold, fontSize: 15, color: colors.accent },
+
+  content: { padding: space(5), gap: space(6), paddingBottom: space(10) },
+  section: { gap: space(3) },
+  sectionTitle: { fontFamily: font.black, fontSize: 18, color: colors.text },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space(2) },
+
+  formats: { flexDirection: 'row', gap: space(2.5) },
+  format: {
+    flex: 1,
+    alignItems: 'center',
+    gap: space(1),
+    paddingVertical: space(4),
+    paddingHorizontal: space(2),
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 112,
+    justifyContent: 'center',
+  },
+  formatPressed: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
+  formatLabel: { fontFamily: font.black, fontSize: 16, color: colors.text },
+  formatHint: { fontFamily: font.medium, fontSize: 11, color: colors.muted, textAlign: 'center' },
+
+  primary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space(2),
+    height: 54,
+    borderRadius: radius.lg,
+    backgroundColor: colors.accent,
+  },
+  primaryPressed: { backgroundColor: colors.accentInk },
+  primaryText: { fontFamily: font.black, fontSize: 16, color: colors.onAccent },
+  disabled: { opacity: 0.45 },
+  link: { minHeight: touch, alignItems: 'center', justifyContent: 'center' },
+  linkText: { fontFamily: font.bold, fontSize: 15, color: colors.accent },
+
+  summary: { flexDirection: 'row', gap: space(2) },
+  summaryBox: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: space(3),
+    borderRadius: radius.md,
+    backgroundColor: colors.accentSoft,
+  },
+  summaryWarn: { backgroundColor: colors.sunSoft },
+  summaryNumber: { fontFamily: font.black, fontSize: 24, color: colors.accent },
+  summaryLabel: { fontFamily: font.bold, fontSize: 12, color: colors.muted },
+
+  problems: {
+    gap: space(1.5),
+    padding: space(3.5),
+    borderRadius: radius.md,
+    backgroundColor: colors.warnSoft,
+  },
+  problemText: { fontFamily: font.medium, fontSize: 13, color: colors.warnInk },
+
+  card: { backgroundColor: colors.surface, borderRadius: radius.lg },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space(3),
+    paddingVertical: space(3),
+    paddingHorizontal: space(4),
+  },
+  divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
+  rowRight: { alignItems: 'flex-end', gap: 4 },
+  qty: { fontFamily: font.black, fontSize: 14, color: colors.text },
+  badge: {
+    fontFamily: font.bold,
+    fontSize: 11,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  badgeNew: { backgroundColor: colors.accentSoft, color: colors.accent },
+  badgeUpdate: { backgroundColor: colors.sunSoft, color: colors.warnInk },
+
+  error: { fontFamily: font.bold, fontSize: 14, color: colors.warn },
+
+  footer: {
+    flexDirection: 'row',
+    gap: space(3),
+    paddingHorizontal: space(5),
+    paddingVertical: space(3),
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.segment,
+  },
+  secondary: {
+    height: 54,
+    paddingHorizontal: space(5),
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryText: { fontFamily: font.bold, fontSize: 15, color: colors.text },
+});

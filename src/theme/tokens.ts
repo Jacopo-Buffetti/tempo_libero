@@ -1,16 +1,46 @@
+export const palette = {
+  pine: '#036930',
+  pineDeep: '#024A22',
+  leaf: '#34A94C',
+  leafSoft: '#E2F1E5',
+  sun: '#FFC61A',
+  sunSoft: '#FFF4D1',
+  cream: '#FFFDF6',
+  ink: '#1E2B22',
+  stone: '#5F6B62',
+} as const;
+
 export const colors = {
-  bg: '#F3F5FA',
+  bg: '#F4F6EF',
   surface: '#FFFFFF',
-  text: '#141A2A',
-  muted: '#5A6275',
-  border: '#D6DBE6',
-  divider: '#EDF0F6',
-  segment: '#E4E8F2',
-  accent: '#2350B8',
-  accentSoft: '#E8EEFB',
-  warn: '#B35400',
-  warnSoft: '#FBEBDD',
-  ok: '#0F6B4F',
+  text: palette.ink,
+  muted: palette.stone,
+  placeholder: '#97A196',
+  border: '#D5DDCC',
+  divider: '#ECF0E6',
+  segment: '#E5EBDC',
+  pressed: '#F1F5EB',
+
+  accent: palette.pine,
+  accentSoft: palette.leafSoft,
+  accentInk: palette.pineDeep,
+  leaf: palette.leaf,
+
+  sun: palette.sun,
+  sunSoft: palette.sunSoft,
+  highlight: '#FFE7A0',
+
+  warn: '#B25E09',
+  warnSoft: '#FCEFD8',
+  warnInk: '#6E3A05',
+
+  ok: '#1F7A3A',
+  okSoft: '#E3F2E6',
+
+  onAccent: '#FFFFFF',
+  checkBorder: '#B7C2B3',
+  overlay: 'rgba(12, 20, 14, 0.92)',
+  shadow: palette.ink,
 } as const;
 
 export const radius = {
@@ -20,7 +50,6 @@ export const radius = {
   xl: 20,
 } as const;
 
-/** Spaziatura a passi di 4 px: space(4) = 16 */
 export const space = (n: number) => n * 4;
 
 export const font = {
@@ -38,5 +67,4 @@ export const type = {
   number: { fontFamily: font.black, fontSize: 20, color: colors.text },
 } as const;
 
-/** Area minima toccabile */
 export const touch = 44;

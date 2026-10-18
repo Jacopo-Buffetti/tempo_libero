@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -25,11 +24,11 @@ import {
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
 import { ItemRow } from '@/components/ItemRow';
-import { colors, font, radius, space, touch, type } from '@/theme/tokens';
+import { colors, space, type } from '@/theme/tokens';
+import { styles } from '@/styles/screens/ricerca';
 
 type Place = Location | 'tutti';
 
-/** Aspetta che l'utente smetta di scrivere prima di interrogare il database */
 function useDebounced<T>(value: T, ms = 250) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -70,7 +69,6 @@ export default function Ricerca() {
     },
   });
 
-  // I filtri di stato confrontano due colonne: li applichiamo qui
   const visible = useMemo(() => {
     let list = results.data ?? [];
     if (onlyLow) list = list.filter(isLow);
@@ -185,32 +183,3 @@ export default function Ricerca() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: space(5), paddingTop: space(3), gap: space(4) },
-
-  searchRow: { flexDirection: 'row', alignItems: 'center', gap: space(2) },
-  search: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space(2.5),
-    height: 48,
-    borderRadius: radius.md,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    backgroundColor: colors.surface,
-    paddingHorizontal: space(3),
-  },
-  input: { flex: 1, fontFamily: font.bold, fontSize: 16, color: colors.text, padding: 0 },
-  close: { minHeight: touch, justifyContent: 'center', paddingHorizontal: space(1) },
-  closeText: { fontFamily: font.bold, fontSize: 15, color: colors.accent },
-
-  group: { gap: space(2) },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space(2) },
-
-  list: { padding: space(5), paddingBottom: space(10) },
-  count: { marginBottom: space(2) },
-  hint: { textAlign: 'center', marginTop: space(10), paddingHorizontal: space(8) },
-});

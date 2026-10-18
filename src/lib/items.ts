@@ -6,7 +6,6 @@ import type { Database } from '@/lib/database.types';
 export type Location = Database['public']['Enums']['item_location'];
 export type Kind = Database['public']['Enums']['item_kind'];
 
-/** Le colonne che servono a liste, ricerca e dettaglio */
 export const ITEM_COLUMNS = 'id, name, location, kind, unit, qty, min_qty, broken_qty';
 
 export type Item = Pick<
@@ -27,26 +26,58 @@ export const kindLabel = (k: Kind) => (k === 'consumabile' ? 'Consumabile' : 'At
 export const isLocation = (v: unknown): v is Location =>
   typeof v === 'string' && LOCATIONS.some((l) => l.value === v);
 
-export const UNITS = ['pezzi', 'rotoli', 'bottiglie', 'confezioni', 'kg', 'litri'];
+export const UNIT_INFO: Record<string, { step: number; decimals: number; label: string }> = {
+  pezzi: { step: 1, decimals: 0, label: 'pezzi' },
+  confezioni: { step: 1, decimals: 0, label: 'confezioni' },
+  bottiglie: { step: 1, decimals: 0, label: 'bottiglie' },
+  rotoli: { step: 1, decimals: 0, label: 'rotoli' },
+  casse: { step: 1, decimals: 0, label: 'casse' },
+  kg: { step: 0.5, decimals: 3, label: 'kg' },
+  g: { step: 100, decimals: 0, label: 'grammi' },
+  litri: { step: 0.5, decimals: 3, label: 'litri' },
+  ml: { step: 250, decimals: 0, label: 'ml' },
+};
 
-/** Pezzi utilizzabili: il totale meno quelli da riparare */
+export const UNITS = Object.keys(UNIT_INFO);
+
+export const COUNT_UNITS = ['pezzi', 'confezioni', 'bottiglie', 'rotoli', 'casse'];
+export const MEASURE_UNITS = ['kg', 'g', 'litri', 'ml'];
+
+export const unitInfo = (unit: string) => UNIT_INFO[unit] ?? { step: 1, decimals: 0, label: unit };
+
+export const stepFor = (unit: string) => unitInfo(unit).step;
+
+export const roundQty = (n: number) => Math.round(n * 1000) / 1000;
+
+export const formatQty = (n: number | null | undefined) =>
+  n == null ? '—' : String(roundQty(Number(n))).replace('.', ',');
+
+export function parseQty(text: string, unit = 'pezzi'): number | null {
+  const clean = text.trim().replace(/\s/g, '').replace(',', '.');
+  if (clean === '' || !/^\d+(\.\d*)?$/.test(clean)) return null;
+  const n = parseFloat(clean);
+  if (Number.isNaN(n)) return null;
+  const d = unitInfo(unit).decimals;
+  return d === 0 ? Math.round(n) : roundQty(n);
+}
+
+export const qtyWithUnit = (n: number | null | undefined, unit: string) =>
+  `${formatQty(n)} ${unit}`;
+
 export const available = (i: Item) => i.qty - i.broken_qty;
 
 export const isLow = (i: Item) => i.kind === 'consumabile' && i.min_qty != null && i.qty < i.min_qty;
 
-/** "Da riparare" esiste solo per l'attrezzatura */
 export const needsRepair = (i: Item) => i.kind === 'attrezzatura' && i.broken_qty > 0;
 
-/** Testo sotto il nome e se va evidenziato */
 export function itemNote(i: Item): { text: string; alert: boolean } {
-  if (isLow(i)) return { text: `Sotto scorta · min. ${i.min_qty}`, alert: true };
+  if (isLow(i)) return { text: `Sotto scorta · min. ${formatQty(i.min_qty)}`, alert: true };
   if (needsRepair(i)) {
     return { text: `${available(i)} disponibili · ${i.broken_qty} da riparare`, alert: true };
   }
   return { text: i.kind === 'consumabile' ? 'Ok' : 'Tutti disponibili', alert: false };
 }
 
-/** Chiavi di cache: tutto ciò che riguarda gli oggetti parte da ['items'] */
 export const itemsKeys = {
   all: ['items'] as const,
   list: (orgId?: string, location?: Location) => ['items', 'list', orgId, location] as const,
@@ -60,11 +91,6 @@ export const movementsKeys = {
   item: (id?: string) => ['movements', id] as const,
 };
 
-/**
- * Mutazione su un oggetto con aggiornamento ottimistico:
- * aggiorna subito liste (array) e dettaglio (oggetto singolo) in cache,
- * torna indietro se il server rifiuta, poi riallinea tutto.
- */
 function useItemRpc(
   run: (id: string, delta: number) => Promise<unknown>,
   patch: (item: Item, delta: number) => Item,
@@ -98,7 +124,6 @@ function useItemRpc(
   });
 }
 
-/** +/− sul totale */
 export function useAdjustQuantity() {
   return useItemRpc(
     async (id, delta) => {
@@ -109,11 +134,10 @@ export function useAdjustQuantity() {
       if (error) throw error;
       return data;
     },
-    (i, d) => ({ ...i, qty: Math.max(i.broken_qty, i.qty + d) }),
+    (i, d) => ({ ...i, qty: Math.max(i.broken_qty, roundQty(i.qty + d)) }),
   );
 }
 
-/** Sposta pezzi tra disponibili e da riparare (positivo = si rompono, negativo = riparati) */
 export function useAdjustBroken() {
   return useItemRpc(
     async (id, delta) => {
@@ -128,5 +152,21 @@ export function useAdjustBroken() {
   );
 }
 
-/** Per usare il testo dell'utente dentro un ILIKE senza che % e _ diventino jolly */
+export function useDeleteItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error, count } = await supabase.from('items').delete({ count: 'exact' }).eq('id', id);
+      if (error) throw error;
+      if (count === 0) throw new Error('Solo un amministratore può eliminare gli oggetti.');
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: itemsKeys.all });
+      queryClient.invalidateQueries({ queryKey: movementsKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['spesa'] });
+    },
+  });
+}
+
 export const escapeLike = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);

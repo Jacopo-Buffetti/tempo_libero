@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { colors, font, radius, space, touch, type } from '@/theme/tokens';
+import { colors, type } from '@/theme/tokens';
+import { styles } from '@/styles/screens/login';
 
 type Step = 'email' | 'code';
 
@@ -29,7 +30,7 @@ export default function Login() {
     setError(null);
     const { error } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
-      options: { shouldCreateUser: false }, // solo utenti invitati
+      options: { shouldCreateUser: false },
     });
     setBusy(false);
 
@@ -54,7 +55,6 @@ export default function Login() {
     });
     setBusy(false);
 
-    // Se va a buon fine, la sessione cambia e il layout porta all'app da solo
     if (error) setError('Codice non valido o scaduto. Richiedine uno nuovo.');
   }
 
@@ -68,7 +68,12 @@ export default function Login() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
-          <Text style={type.title}>Pro Loco</Text>
+          <Image
+            source={require('@/assets/images/logo-proloco.png')}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityLabel="Pro Loco Tempo Libero Vigne"
+          />
           <Text style={styles.subtitle}>
             {step === 'email'
               ? 'Accedi con la tua email: ti mandiamo un codice.'
@@ -124,7 +129,7 @@ export default function Login() {
           ]}
         >
           {busy ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.onAccent} />
           ) : (
             <Text style={styles.buttonText}>{step === 'email' ? 'Mandami il codice' : 'Accedi'}</Text>
           )}
@@ -146,37 +151,3 @@ export default function Login() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  container: { flex: 1, padding: space(5), justifyContent: 'center', gap: space(4) },
-  header: { gap: space(2), marginBottom: space(4) },
-  subtitle: { fontFamily: font.medium, fontSize: 16, color: colors.muted, lineHeight: 22 },
-  field: { gap: space(1.5) },
-  input: {
-    height: 52,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: space(4),
-    fontFamily: font.bold,
-    fontSize: 16,
-    color: colors.text,
-  },
-  codeInput: { fontFamily: font.black, fontSize: 22, letterSpacing: 6 },
-  error: { fontFamily: font.bold, fontSize: 14, color: colors.warn },
-  button: {
-    height: 54,
-    minHeight: touch,
-    borderRadius: radius.lg,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonDisabled: { opacity: 0.45 },
-  buttonPressed: { opacity: 0.85 },
-  buttonText: { fontFamily: font.black, fontSize: 16, color: '#FFFFFF' },
-  linkButton: { minHeight: touch, alignItems: 'center', justifyContent: 'center' },
-  link: { fontFamily: font.bold, fontSize: 15, color: colors.accent },
-});

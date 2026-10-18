@@ -1,19 +1,13 @@
--- =========================================================
--- Pro Loco — schema iniziale: associazioni, membri, inventario
--- =========================================================
-
 create type public.member_role   as enum ('admin', 'volontario');
 create type public.item_location as enum ('magazzino', 'cucina', 'bar');
 create type public.item_kind     as enum ('consumabile', 'attrezzatura');
 
--- Associazioni -------------------------------------------------------
 create table public.organizations (
   id         uuid primary key default gen_random_uuid(),
   name       text not null,
   created_at timestamptz not null default now()
 );
 
--- Chi fa parte di quale associazione, e con che ruolo -----------------
 create table public.members (
   org_id       uuid not null references public.organizations(id) on delete cascade,
   user_id      uuid not null references auth.users(id) on delete cascade,
@@ -24,7 +18,6 @@ create table public.members (
 );
 create index members_user_idx on public.members(user_id);
 
--- Oggetti dell'inventario --------------------------------------------
 create table public.items (
   id         uuid primary key default gen_random_uuid(),
   org_id     uuid not null references public.organizations(id) on delete cascade,
@@ -33,7 +26,7 @@ create table public.items (
   kind       public.item_kind not null,
   unit       text not null default 'pezzi',
   qty        integer not null default 0 check (qty >= 0),
-  min_qty    integer check (min_qty >= 0),   -- solo consumabili: sotto questa soglia va in spesa
+  min_qty    integer check (min_qty >= 0),
   broken_qty integer not null default 0 check (broken_qty >= 0),
   photo_path text,
   barcode    text,
@@ -43,7 +36,6 @@ create table public.items (
 );
 create index items_org_location_idx on public.items(org_id, location, name);
 
--- Storico di ogni variazione di quantità -----------------------------
 create table public.item_movements (
   id         bigint generated always as identity primary key,
   item_id    uuid not null references public.items(id) on delete cascade,
@@ -55,9 +47,6 @@ create table public.item_movements (
 );
 create index item_movements_item_idx on public.item_movements(item_id, created_at desc);
 
--- =========================================================
--- Funzioni di supporto per i permessi
--- =========================================================
 create or replace function public.is_member(p_org uuid)
 returns boolean
 language sql stable security definer set search_path = ''
@@ -78,9 +67,6 @@ as $$
   );
 $$;
 
--- =========================================================
--- Variazione atomica della quantità (+ storico)
--- =========================================================
 create or replace function public.adjust_quantity(
   p_item_id uuid,
   p_delta   integer,
@@ -102,7 +88,6 @@ begin
     raise exception 'Oggetto non trovato';
   end if;
 
-  -- l'aggiornamento avviene solo se la quantità resta valida
   update public.items
      set qty = qty + p_delta,
          updated_at = now()
@@ -124,11 +109,6 @@ $$;
 revoke execute on function public.adjust_quantity(uuid, integer, text) from public, anon;
 grant  execute on function public.adjust_quantity(uuid, integer, text) to authenticated;
 
--- =========================================================
--- Permessi per la Data API
--- (servono perché "Automatically expose new tables" è disattivato:
---  nessuna tabella è raggiungibile dall'app finché non lo diciamo noi)
--- =========================================================
 grant usage on schema public to authenticated;
 
 grant select, update                 on public.organizations  to authenticated;
@@ -136,27 +116,21 @@ grant select, insert, update, delete on public.members        to authenticated;
 grant select, insert, update, delete on public.items          to authenticated;
 grant select                         on public.item_movements to authenticated;
 
--- Le funzioni usate nelle policy devono essere eseguibili da chi è collegato
 revoke execute on function public.is_member(uuid) from public, anon;
 revoke execute on function public.is_admin(uuid)  from public, anon;
 grant  execute on function public.is_member(uuid) to authenticated;
 grant  execute on function public.is_admin(uuid)  to authenticated;
 
--- =========================================================
--- Row Level Security
--- =========================================================
 alter table public.organizations  enable row level security;
 alter table public.members        enable row level security;
 alter table public.items          enable row level security;
 alter table public.item_movements enable row level security;
 
--- Associazioni: le vedi solo se ne fai parte; le modifica un admin
 create policy "org: lettura membri" on public.organizations
   for select to authenticated using (public.is_member(id));
 create policy "org: modifica admin" on public.organizations
   for update to authenticated using (public.is_admin(id));
 
--- Membri: tutti vedono i colleghi, solo gli admin gestiscono
 create policy "members: lettura" on public.members
   for select to authenticated using (public.is_member(org_id));
 create policy "members: inserimento admin" on public.members
@@ -166,7 +140,6 @@ create policy "members: modifica admin" on public.members
 create policy "members: rimozione admin" on public.members
   for delete to authenticated using (public.is_admin(org_id));
 
--- Oggetti: i membri leggono, creano e modificano; solo gli admin cancellano
 create policy "items: lettura" on public.items
   for select to authenticated using (public.is_member(org_id));
 create policy "items: inserimento" on public.items
@@ -177,6 +150,5 @@ create policy "items: modifica" on public.items
 create policy "items: rimozione admin" on public.items
   for delete to authenticated using (public.is_admin(org_id));
 
--- Movimenti: si leggono e basta (si scrivono solo tramite adjust_quantity)
 create policy "movements: lettura" on public.item_movements
   for select to authenticated using (public.is_member(org_id));

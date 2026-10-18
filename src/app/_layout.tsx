@@ -39,6 +39,16 @@ function RootNavigator() {
           <Stack.Screen name="nuovo-oggetto" options={{ presentation: 'modal' }} />
           <Stack.Screen name="ricerca" options={{ animation: 'fade' }} />
           <Stack.Screen name="oggetto/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="inventario/dati" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="spesa/nuova" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="spesa/[id]" />
+          <Stack.Screen name="spesa/chiudi/[id]" />
+          <Stack.Screen name="spesa/voce" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="spesa/modifica/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="menu/nuovo" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="menu/[id]" />
+          <Stack.Screen name="menu/piatto" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="menu/modifica/[id]" options={{ presentation: 'modal' }} />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="login" />

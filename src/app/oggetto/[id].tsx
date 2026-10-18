@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -16,18 +16,22 @@ import { supabase } from '@/lib/supabase';
 import {
   ITEM_COLUMNS,
   available,
+  formatQty,
   isLow,
   itemsKeys,
   kindLabel,
   locationLabel,
   movementsKeys,
+  stepFor,
   useAdjustBroken,
   useAdjustQuantity,
+  useDeleteItem,
   type Item,
 } from '@/lib/items';
 import { useAuth, useMembership } from '@/providers/AuthProvider';
 import { Stepper } from '@/components/Stepper';
-import { colors, font, radius, space, touch, type } from '@/theme/tokens';
+import { colors, space, type } from '@/theme/tokens';
+import { styles } from '@/styles/screens/oggetto';
 
 type Movement = {
   id: number;
@@ -45,6 +49,8 @@ export default function DettaglioOggetto() {
 
   const adjust = useAdjustQuantity();
   const broken = useAdjustBroken();
+  const removeItem = useDeleteItem();
+  const isAdmin = membership.data?.role === 'admin';
   const [count, setCount] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,7 +83,6 @@ export default function DettaglioOggetto() {
     },
   });
 
-  // Nomi dei volontari, per dire chi ha fatto cosa
   const members = useQuery({
     queryKey: ['members', orgId],
     enabled: !!orgId,
@@ -123,6 +128,8 @@ export default function DettaglioOggetto() {
   const isEquipment = it.kind === 'attrezzatura';
   const free = available(it);
   const low = isLow(it);
+  const step = stepFor(it.unit);
+  const cantRemove = it.qty - step < it.broken_qty;
 
   function moveBroken(delta: number) {
     setError(null);
@@ -135,6 +142,26 @@ export default function DettaglioOggetto() {
         },
         onError: () => setError('Operazione non riuscita. Controlla la connessione e riprova.'),
       },
+    );
+  }
+
+  function confirmDelete() {
+    Alert.alert(
+      `Eliminare “${it.name}”?`,
+      'Sparisce dall’inventario insieme al suo storico dei movimenti. Se è in qualche lista della spesa, lì resta come voce libera.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Elimina',
+          style: 'destructive',
+          onPress: () =>
+            removeItem.mutate(it.id, {
+              onSuccess: () => router.back(),
+              onError: (e) =>
+                setError(e instanceof Error && e.message ? e.message : 'Eliminazione non riuscita. Riprova.'),
+            }),
+        },
+      ],
     );
   }
 
@@ -163,7 +190,6 @@ export default function DettaglioOggetto() {
           </View>
         </View>
 
-        {/* Riepilogo */}
         <View style={styles.summary}>
           {isEquipment ? (
             <>
@@ -173,44 +199,45 @@ export default function DettaglioOggetto() {
             </>
           ) : (
             <>
-              <Stat label="Quantità" value={it.qty} alert={low} />
-              <Stat label="Scorta minima" value={it.min_qty ?? 0} />
+              <Stat label={`Quantità (${it.unit})`} text={formatQty(it.qty)} alert={low} big />
+              <Stat label="Scorta minima" text={formatQty(it.min_qty ?? 0)} big />
               <Stat label="Stato" text={low ? 'Da comprare' : 'Ok'} alert={low} />
             </>
           )}
         </View>
 
-        {/* Totale */}
         <View style={styles.card}>
           <View style={styles.cardRow}>
             <View style={styles.flex}>
               <Text style={type.body}>{isEquipment ? 'Totale pezzi' : 'Quantità'}</Text>
               <Text style={type.caption}>
-                {isEquipment ? 'Pezzi acquistati o persi' : 'Usati o comprati'}
+                {isEquipment
+                  ? 'Pezzi acquistati o persi'
+                  : `+ e − di ${formatQty(step)} ${it.unit}`}
               </Text>
             </View>
             <Pressable
               onPress={() => {
                 Haptics.selectionAsync();
-                adjust.mutate({ id: it.id, delta: -1 });
+                adjust.mutate({ id: it.id, delta: -step });
               }}
-              disabled={it.qty <= it.broken_qty}
-              accessibilityLabel="Togli uno"
+              disabled={cantRemove}
+              accessibilityLabel={`Togli ${formatQty(step)} ${it.unit}`}
               style={({ pressed }) => [
                 styles.step,
-                it.qty <= it.broken_qty && styles.disabled,
+                cantRemove && styles.disabled,
                 pressed && styles.stepPressed,
               ]}
             >
               <Text style={styles.stepText}>−</Text>
             </Pressable>
-            <Text style={styles.qty}>{it.qty}</Text>
+            <Text style={styles.qty}>{formatQty(it.qty)}</Text>
             <Pressable
               onPress={() => {
                 Haptics.selectionAsync();
-                adjust.mutate({ id: it.id, delta: 1 });
+                adjust.mutate({ id: it.id, delta: step });
               }}
-              accessibilityLabel="Aggiungi uno"
+              accessibilityLabel={`Aggiungi ${formatQty(step)} ${it.unit}`}
               style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}
             >
               <Text style={styles.stepText}>+</Text>
@@ -218,7 +245,6 @@ export default function DettaglioOggetto() {
           </View>
         </View>
 
-        {/* Riparazioni: solo attrezzatura */}
         {isEquipment && (
           <View style={styles.card}>
             <View style={[styles.cardRow, styles.cardDivider]}>
@@ -271,7 +297,6 @@ export default function DettaglioOggetto() {
 
         {error && <Text style={styles.error}>{error}</Text>}
 
-        {/* Storico */}
         <View style={styles.history}>
           <Text style={type.label}>Ultimi movimenti</Text>
           <View style={styles.card}>
@@ -300,6 +325,29 @@ export default function DettaglioOggetto() {
             )}
           </View>
         </View>
+
+        <View style={styles.danger}>
+          {isAdmin ? (
+            <Pressable
+              onPress={confirmDelete}
+              disabled={removeItem.isPending}
+              style={({ pressed }) => [styles.deleteButton, pressed && { opacity: 0.85 }]}
+            >
+              {removeItem.isPending ? (
+                <ActivityIndicator color={colors.warn} />
+              ) : (
+                <>
+                  <Ionicons name="trash-outline" size={18} color={colors.warn} />
+                  <Text style={styles.deleteText}>Elimina dall’inventario</Text>
+                </>
+              )}
+            </Pressable>
+          ) : (
+            <Text style={[type.caption, styles.centerText]}>
+              Per eliminare un oggetto chiedi a un amministratore.
+            </Text>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -310,16 +358,20 @@ function Stat({
   value,
   text,
   alert,
+  big,
 }: {
   label: string;
   value?: number;
   text?: string;
   alert?: boolean;
+  big?: boolean;
 }) {
   return (
     <View style={styles.stat}>
       <Text style={type.caption}>{label}</Text>
-      <Text style={[styles.statValue, alert && { color: colors.warn }, text ? styles.statText : null]}>
+      <Text
+        style={[styles.statValue, alert && { color: colors.warn }, text && !big ? styles.statText : null]}
+      >
         {text ?? value}
       </Text>
     </View>
@@ -332,9 +384,9 @@ function describe(m: Movement) {
     const n = -m.broken_delta;
     return `${n} ${n === 1 ? 'riparato' : 'riparati'}`;
   }
-  if (m.delta > 0) return `+${m.delta} ${m.delta === 1 ? 'aggiunto' : 'aggiunti'}`;
+  if (m.delta > 0) return `+${formatQty(m.delta)} ${m.delta === 1 ? 'aggiunto' : 'aggiunti'}`;
   const n = -m.delta;
-  return `−${n} ${n === 1 ? 'tolto' : 'tolti'}`;
+  return `−${formatQty(n)} ${n === 1 ? 'tolto' : 'tolti'}`;
 }
 
 function formatWhen(iso: string) {
@@ -345,91 +397,3 @@ function formatWhen(iso: string) {
   if (sameDay) return `oggi ${time}`;
   return `${d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} ${time}`;
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  centered: { alignItems: 'center', justifyContent: 'center', padding: space(8), gap: space(2) },
-  centerText: { textAlign: 'center' },
-  flex: { flex: 1 },
-
-  topBar: { paddingHorizontal: space(2), paddingVertical: space(1) },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: touch, alignSelf: 'flex-start' },
-  backText: { fontFamily: font.bold, fontSize: 15, color: colors.accent },
-  linkButton: { minHeight: touch, justifyContent: 'center' },
-  link: { fontFamily: font.bold, fontSize: 15, color: colors.accent },
-
-  content: { padding: space(5), paddingTop: space(1), gap: space(4) },
-  hero: { gap: space(2) },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: space(1.5) },
-  tag: {
-    fontFamily: font.bold,
-    fontSize: 12,
-    color: colors.muted,
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    overflow: 'hidden',
-  },
-
-  summary: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingVertical: space(4),
-  },
-  stat: { flex: 1, alignItems: 'center', gap: 4 },
-  statValue: { fontFamily: font.black, fontSize: 26, color: colors.text },
-  statText: { fontSize: 16, marginTop: 6 },
-
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space(2),
-    paddingVertical: space(3),
-    paddingLeft: space(4),
-    paddingRight: space(3),
-  },
-  cardDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-
-  step: {
-    width: touch,
-    height: touch,
-    borderRadius: 12,
-    backgroundColor: colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepPressed: { backgroundColor: colors.segment },
-  stepText: { fontFamily: font.bold, fontSize: 20, color: colors.text },
-  qty: { minWidth: 48, textAlign: 'center', fontFamily: font.black, fontSize: 20, color: colors.text },
-  disabled: { opacity: 0.35 },
-
-  actions: { flexDirection: 'row', gap: space(2.5), padding: space(3) },
-  action: {
-    flex: 1,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    paddingVertical: space(3),
-    alignItems: 'center',
-    gap: 2,
-  },
-  actionWarn: { borderColor: colors.warn, backgroundColor: colors.warnSoft },
-  actionOk: { borderColor: colors.ok, backgroundColor: '#E3F2EC' },
-  actionText: { fontFamily: font.black, fontSize: 15 },
-  actionHint: { fontFamily: font.medium, fontSize: 12, color: colors.muted },
-
-  error: { fontFamily: font.bold, fontSize: 14, color: colors.warn },
-
-  history: { gap: space(2) },
-  historyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space(3),
-    paddingVertical: space(3),
-    paddingHorizontal: space(4),
-  },
-  historyMeta: { alignItems: 'flex-end', gap: 2 },
-  historyWho: { fontFamily: font.bold, fontSize: 13, color: colors.text },
-});

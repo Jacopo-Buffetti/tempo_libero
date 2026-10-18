@@ -1,11 +1,11 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
-import { colors, font } from '@/theme/tokens';
+import { Pressable, Text } from 'react-native';
+import { colors } from '@/theme/tokens';
+import { styles } from '@/styles/components/chip';
 
 type Props = {
   label: string;
   active?: boolean;
   onPress?: () => void;
-  /** dark = filtri, accent = scelte principali (luogo, unità) */
   variant?: 'dark' | 'accent';
 };
 
@@ -28,18 +28,3 @@ export function Chip({ label, active = false, onPress, variant = 'dark' }: Props
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  chip: {
-    height: 38,
-    paddingHorizontal: 14,
-    borderRadius: 19,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  idle: { backgroundColor: colors.surface, borderColor: colors.border },
-  pressed: { backgroundColor: colors.segment },
-  label: { fontFamily: font.bold, fontSize: 13, color: colors.text },
-  labelActive: { color: '#FFFFFF' },
-});

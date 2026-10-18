@@ -1,7 +1,3 @@
--- Da eseguire UNA volta nel SQL Editor di Supabase,
--- DOPO aver creato il tuo utente (Authentication › Users › Add user).
--- Sostituisci la tua email e il nome dell'associazione.
-
 with org as (
   insert into public.organizations (name)
   values ('Pro Loco [NOME]')

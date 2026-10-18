@@ -4,7 +4,6 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -26,7 +25,8 @@ import {
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
 import { ItemRow } from '@/components/ItemRow';
-import { colors, font, radius, space, touch, type } from '@/theme/tokens';
+import { colors, space, type } from '@/theme/tokens';
+import { styles } from '@/styles/screens/inventario';
 
 type Filter = 'tutti' | 'scorta' | 'riparare';
 
@@ -92,7 +92,17 @@ export default function Inventario() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={type.title}>Inventario</Text>
+        <View style={styles.titleRow}>
+          <Text style={type.title}>Inventario</Text>
+          <Pressable
+            onPress={() => router.push('/inventario/dati')}
+            accessibilityLabel="Esporta o importa l'inventario"
+            style={({ pressed }) => [styles.dataButton, pressed && styles.dataButtonPressed]}
+          >
+            <Ionicons name="swap-vertical" size={18} color={colors.accent} />
+            <Text style={styles.dataButtonText}>PDF · CSV</Text>
+          </Pressable>
+        </View>
 
         <Pressable
           onPress={() => router.push('/ricerca')}
@@ -178,74 +188,8 @@ export default function Inventario() {
         accessibilityLabel={`Aggiungi un oggetto in ${label}`}
         style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
       >
-        <Ionicons name="add" size={30} color="#FFFFFF" />
+        <Ionicons name="add" size={30} color={colors.onAccent} />
       </Pressable>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  centered: { alignItems: 'center', justifyContent: 'center', padding: space(8), gap: space(2) },
-  centerText: { textAlign: 'center', marginTop: space(8), paddingHorizontal: space(6) },
-
-  header: { paddingHorizontal: space(5), paddingTop: space(3), gap: space(3) },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space(2.5),
-    height: 48,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: space(3.5),
-  },
-  searchText: { fontFamily: font.medium, fontSize: 15, color: colors.muted },
-
-  segment: {
-    flexDirection: 'row',
-    gap: space(1.5),
-    backgroundColor: colors.segment,
-    borderRadius: radius.md,
-    padding: space(1),
-  },
-  segmentItem: {
-    flex: 1,
-    minHeight: touch,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentItemActive: {
-    backgroundColor: colors.surface,
-    shadowColor: colors.text,
-    shadowOpacity: 0.12,
-    shadowRadius: 2,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
-  },
-  segmentText: { fontFamily: font.medium, fontSize: 14, color: colors.muted },
-  segmentTextActive: { fontFamily: font.bold, color: colors.text },
-
-  chips: { flexDirection: 'row', gap: space(2), flexWrap: 'wrap' },
-
-  list: { padding: space(5), paddingBottom: 120 },
-
-  fab: {
-    position: 'absolute',
-    right: space(5),
-    bottom: space(5),
-    width: 60,
-    height: 60,
-    borderRadius: 20,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.accent,
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-});

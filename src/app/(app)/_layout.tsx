@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, font } from '@/theme/tokens';
 
 export default function AppLayout() {
-  // Spazio per la barra di sistema di Android/iPhone sotto le schede
   const insets = useSafeAreaInsets();
   const bottom = Math.max(insets.bottom, 10);
 
@@ -35,7 +34,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="spesa"
         options={{
-          title: 'Spesa',
+          title: 'Liste spesa',
           tabBarIcon: ({ color, size }) => <Ionicons name="cart-outline" color={color} size={size} />,
         }}
       />

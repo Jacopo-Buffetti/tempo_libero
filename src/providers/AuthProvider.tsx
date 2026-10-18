@@ -30,7 +30,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
 export const useAuth = () => useContext(AuthContext);
 
-/** L'associazione a cui appartiene l'utente collegato (la prima, per ora) */
 export function useMembership() {
   const { session } = useAuth();
   const userId = session?.user.id;

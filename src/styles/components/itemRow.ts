@@ -1,0 +1,53 @@
+import { StyleSheet } from 'react-native';
+import { colors, font, radius, space, touch } from '@/theme/tokens';
+
+export const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space(2.5),
+    paddingVertical: space(3),
+    paddingHorizontal: space(3),
+    backgroundColor: colors.surface,
+  },
+  rowPressed: { backgroundColor: colors.pressed },
+  first: { borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
+  last: { borderBottomLeftRadius: radius.lg, borderBottomRightRadius: radius.lg },
+  divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
+  badge: {
+    width: touch,
+    height: touch,
+    borderRadius: 12,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeAlert: { backgroundColor: colors.warnSoft },
+  badgeText: { fontFamily: font.black, fontSize: 16, color: colors.accent },
+  text: { flex: 1, gap: 3 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  place: {
+    fontFamily: font.bold,
+    fontSize: 11,
+    color: colors.muted,
+    backgroundColor: colors.bg,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    overflow: 'hidden',
+  },
+  mark: { backgroundColor: colors.highlight },
+  step: {
+    width: 40,
+    height: touch,
+    borderRadius: 12,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepDisabled: { opacity: 0.35 },
+  stepPressed: { backgroundColor: colors.segment },
+  stepText: { fontFamily: font.bold, fontSize: 20, color: colors.text },
+  qty: { minWidth: 44, alignItems: 'center' },
+  unit: { fontFamily: font.medium, fontSize: 11, color: colors.muted },
+});
