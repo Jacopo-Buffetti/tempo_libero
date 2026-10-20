@@ -24,10 +24,12 @@ import {
   useEventList,
 } from '@/lib/menu';
 import { formatEuro } from '@/lib/spesa';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/menu/dettaglio';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/menu/dettaglio';
 
 export default function DettaglioMenu() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const event = useEvent(id);
   const eventList = useEventList(id);
@@ -264,6 +266,8 @@ function Action({
   label: string;
   onPress: () => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <Pressable
       onPress={onPress}

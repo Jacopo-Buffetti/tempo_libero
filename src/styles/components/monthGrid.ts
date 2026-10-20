@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   wrap: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: space(2.5), gap: space(1.5) },
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   navButton: { width: touch, height: touch, alignItems: 'center', justifyContent: 'center' },
@@ -19,8 +18,8 @@ export const styles = StyleSheet.create({
   numberMuted: { color: colors.placeholder },
   numberSelected: { color: colors.onAccent },
   today: { color: colors.accent, textDecorationLine: 'underline' },
-  label: { fontFamily: font.bold, fontSize: 9.5, color: colors.accentInk, paddingHorizontal: 1 },
+  label: { fontFamily: font.bold, fontSize: 9.5, color: colors.accent, paddingHorizontal: 1 },
   labelSelected: { color: colors.onAccent },
   dots: { flexDirection: 'row', gap: 3, marginTop: 2 },
   dot: { width: 6, height: 6, borderRadius: 3 },
-});
+}));

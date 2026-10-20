@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space } from '@/theme/tokens';
+import { font, radius, space, themed } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   flex: { flex: 1 },
   field: { gap: space(1.5) },
   label: { fontFamily: font.bold, fontSize: 13, color: colors.muted },
@@ -49,4 +48,4 @@ export const styles = StyleSheet.create({
     color: colors.accent,
   },
   sectionBody: { gap: space(3), backgroundColor: colors.bg },
-});
+}));

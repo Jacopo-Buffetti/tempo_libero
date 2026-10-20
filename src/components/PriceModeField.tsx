@@ -1,7 +1,7 @@
 import { Pressable, Text, TextInput, View } from 'react-native';
 import type { PriceMode } from '@/lib/menu';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/components/priceModeField';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/components/priceModeField';
 
 type Props = {
   mode: PriceMode;
@@ -22,6 +22,8 @@ export function PriceModeField({
   onChangeNote,
   priceInvalid,
 }: Props) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   return (
     <View style={styles.wrap}>
       <View style={styles.segment}>

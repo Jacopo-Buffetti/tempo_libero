@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { formatQty, parseQty, roundQty, unitInfo } from '@/lib/items';
-import { styles } from '@/styles/components/stepper';
+import { useStyles } from '@/styles/components/stepper';
 
 type Props = {
   label: string;
@@ -14,6 +14,7 @@ type Props = {
 };
 
 export function Stepper({ label, value, onChange, unit = 'pezzi', min = 0, max = 99999 }: Props) {
+  const styles = useStyles();
   const { step, decimals } = unitInfo(unit);
   const clamp = (n: number) => Math.min(max, Math.max(min, roundQty(n)));
 

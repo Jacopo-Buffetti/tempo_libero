@@ -19,7 +19,7 @@ import {
 import { localIsoDate } from '@/lib/spesa';
 import { quantityLabel } from '@/lib/condividiLista';
 import { LOGO_PROLOCO_DATA_URI } from '@/lib/logoProloco';
-import { colors, palette } from '@/theme/tokens';
+import { palette, printColors } from '@/theme/tokens';
 
 export type ExportScope = Location | 'tutto';
 export type ExportFormat = 'pdf' | 'csv' | 'txt';
@@ -187,16 +187,16 @@ export function inventoryHtml(items: Item[], scope: ExportScope) {
     thead { display: table-header-group; }
     th { text-align: left; font-size: 7.5pt; letter-spacing: 1px; text-transform: uppercase; color: ${palette.cream};
          background: ${palette.pine}; padding: 2mm 3mm; }
-    td { padding: 2.2mm 3mm; border-bottom: 0.3mm solid ${colors.divider}; vertical-align: top; }
+    td { padding: 2.2mm 3mm; border-bottom: 0.3mm solid ${printColors.divider}; vertical-align: top; }
     tr { break-inside: avoid; }
-    tbody tr:nth-child(even) td { background: ${colors.bg}; }
+    tbody tr:nth-child(even) td { background: ${printColors.bg}; }
     .num { text-align: right; white-space: nowrap; }
     .name { font-weight: 700; }
     .kind { font-weight: 400; font-size: 7.5pt; color: ${palette.stone}; margin-top: 0.5mm; }
     .status { font-size: 8.5pt; color: ${palette.stone}; }
-    tr.warn .status { color: ${colors.warn}; font-weight: 700; }
+    tr.warn .status { color: ${printColors.warn}; font-weight: 700; }
     tr.warn td:first-child { box-shadow: inset 1.2mm 0 0 ${palette.sun}; }
-    tr.repair .status { color: ${colors.warn}; }
+    tr.repair .status { color: ${printColors.warn}; }
     footer { margin-top: 8mm; text-align: center; font-size: 8pt; letter-spacing: 2px; text-transform: uppercase; color: ${palette.pine}; }
   </style></head><body>
     <header>

@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   container: { flex: 1, padding: space(5), justifyContent: 'center', gap: space(4) },
   header: { gap: space(4), marginBottom: space(4), alignItems: 'center' },
@@ -40,4 +39,4 @@ export const styles = StyleSheet.create({
   buttonText: { fontFamily: font.black, fontSize: 16, color: colors.onAccent },
   linkButton: { minHeight: touch, alignItems: 'center', justifyContent: 'center' },
   link: { fontFamily: font.bold, fontSize: 15, color: colors.accent },
-});
+}));

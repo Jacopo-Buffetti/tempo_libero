@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space } from '@/theme/tokens';
+import { font, radius, space, themed } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -22,4 +21,4 @@ export const styles = StyleSheet.create({
   buttonPressed: { backgroundColor: colors.accentSoft },
   value: { fontFamily: font.black, fontSize: 16, color: colors.text },
   placeholder: { fontFamily: font.bold, color: colors.accent },
-});
+}));

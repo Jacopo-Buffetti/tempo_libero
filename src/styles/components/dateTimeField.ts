@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   card: { backgroundColor: colors.surface, borderRadius: radius.lg },
   row: {
     flexDirection: 'row',
@@ -25,4 +24,4 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addTimeText: { fontFamily: font.bold, fontSize: 14, color: colors.accent },
-});
+}));

@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   centered: { alignItems: 'center', justifyContent: 'center' },
   empty: { textAlign: 'center', paddingVertical: space(6) },
@@ -29,6 +28,7 @@ export const styles = StyleSheet.create({
     color: colors.text,
   },
   chips: { flexDirection: 'row', gap: space(2) },
+  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space(2) },
   segment: {
     flexDirection: 'row',
     gap: space(1.5),
@@ -113,4 +113,4 @@ export const styles = StyleSheet.create({
   },
   saveDisabled: { opacity: 0.45 },
   saveText: { fontFamily: font.black, fontSize: 16, color: colors.onAccent },
-});
+}));

@@ -47,11 +47,15 @@ import {
 } from '@/lib/spesa';
 import { useAuth, useMembership } from '@/providers/AuthProvider';
 import { RunCard } from '@/components/spesa/RunCard';
-import { colors, space, type } from '@/theme/tokens';
+import { space, useTheme } from '@/theme/tokens';
 import { openListText, shareAnywhere, shareOnWhatsApp } from '@/lib/condividiLista';
-import { styles } from '@/styles/components/listaAperta';
+import { useStyles } from '@/styles/components/listaAperta';
+import { useRole } from '@/lib/ruoli';
 
 export function ListaAperta({ list }: { list: ListSummary }) {
+  const styles = useStyles();
+  const { isConsigliere } = useRole();
+  const { colors, type } = useTheme();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
   const listId = list.id!;
@@ -169,8 +173,8 @@ export function ListaAperta({ list }: { list: ListSummary }) {
   function onToggle(i: ListItem) {
     if (i.run_id) {
       Alert.alert(
-        'Già registrato',
-        'Questo articolo fa parte di una spesa già registrata e non si può togliere la spunta.',
+        'È in un pagamento',
+        'Per togliere la spunta apri il pagamento qui sotto e togli l’articolo da lì.',
       );
       return;
     }
@@ -297,7 +301,10 @@ export function ListaAperta({ list }: { list: ListSummary }) {
                 term &&
                 (matches[0]
                   ? openNew({ mode: 'inventory', itemId: matches[0].id, name: matches[0].name })
-                  : openNew({ mode: exactExists ? 'list-only' : 'new-product', name: term }))
+                  : openNew({
+                      mode: exactExists || !isConsigliere ? 'list-only' : 'new-product',
+                      name: term,
+                    }))
               }
               style={styles.addInput}
             />
@@ -319,7 +326,7 @@ export function ListaAperta({ list }: { list: ListSummary }) {
                   onPress={() => openNew({ mode: 'inventory', itemId: s.id, name: s.name })}
                 />
               ))}
-              {!exactExists && (
+              {!exactExists && isConsigliere && (
                 <Option
                   icon="add-circle-outline"
                   iconColor={colors.accent}
@@ -390,7 +397,7 @@ export function ListaAperta({ list }: { list: ListSummary }) {
             runList.length > 0 ? (
               <View style={styles.runs}>
                 <View style={styles.runsHead}>
-                  <Text style={type.label}>Spese registrate · {runList.length}</Text>
+                  <Text style={type.label}>Pagamenti · {runList.length}</Text>
                   <Text style={styles.runsTotal}>{formatEuro(spent)}</Text>
                 </View>
                 {runList.map((r, index) => (
@@ -401,7 +408,7 @@ export function ListaAperta({ list }: { list: ListSummary }) {
                     listId={listId}
                     orgId={orgId}
                     items={sorted.filter((i) => i.run_id === r.id)}
-                    payerName={payerLabel(r.paid_by, r.paid_by_user)}
+                    payerName={payerLabel(r)}
                   />
                 ))}
               </View>
@@ -442,35 +449,33 @@ export function ListaAperta({ list }: { list: ListSummary }) {
         <View style={styles.footer}>
           {unregistered > 0 ? (
             <Pressable
-              onPress={() =>
-                router.push({ pathname: '/spesa/chiudi/[id]', params: { id: listId, mode: 'registra' } })
-              }
+              onPress={() => router.push({ pathname: '/spesa/pagamento', params: { listId } })}
               style={({ pressed }) => [styles.registerButton, pressed && styles.registerPressed]}
             >
-              <Ionicons name="save-outline" size={18} color={colors.onAccent} />
+              <Ionicons name="wallet-outline" size={18} color={colors.onAccent} />
               <Text style={styles.registerText}>
-                Registra la spesa · {unregistered} {unregistered === 1 ? 'preso' : 'presi'}
+                Aggiungi pagamento · {unregistered} da attribuire
               </Text>
             </Pressable>
           ) : (
             <Text style={[type.caption, styles.footerHint]}>
               {done === 0
-                ? 'Spunta quello che compri, poi registra la spesa.'
-                : 'Tutto registrato. Puoi continuare ad aggiungere voci.'}
+                ? 'Spunta quello che compri, poi indica chi l’ha pagato.'
+                : 'Tutto attribuito. Puoi continuare ad aggiungere voci.'}
             </Text>
           )}
           <Pressable
-            onPress={() =>
-              router.push({ pathname: '/spesa/chiudi/[id]', params: { id: listId, mode: 'chiudi' } })
-            }
-            disabled={done === 0}
+            onPress={() => router.push({ pathname: '/spesa/chiudi/[id]', params: { id: listId } })}
+            disabled={runList.length === 0}
             style={({ pressed }) => [
               styles.closeButton,
-              done === 0 && styles.closeDisabled,
+              runList.length === 0 && styles.closeDisabled,
               pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={[styles.closeText, done === 0 && { color: colors.muted }]}>Chiudi la lista</Text>
+            <Text style={[styles.closeText, runList.length === 0 && { color: colors.muted }]}>
+              Chiudi la lista
+            </Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -491,6 +496,8 @@ function Option({
   hint: string;
   onPress: () => void;
 }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -524,14 +531,16 @@ function Row({
   onMinus: () => void;
   onPlus: () => void;
 }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const linked = !!item.item_id;
   const step = stepFor(item.unit);
 
   const dest = item.items ? locationLabel(item.items.location) : where;
   const destination = item.checked
     ? linked
-      ? `In inventario · ${dest} · da registrare`
-      : 'Preso · da registrare'
+      ? `In inventario · ${dest} · da attribuire`
+      : 'Preso · da attribuire'
     : linked
       ? `Va in inventario · ${dest}`
       : 'Solo in lista';

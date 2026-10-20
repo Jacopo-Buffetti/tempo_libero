@@ -1,3 +1,5 @@
+import { Appearance, StyleSheet } from 'react-native';
+
 export const palette = {
   pine: '#036930',
   pineDeep: '#024A22',
@@ -10,7 +12,7 @@ export const palette = {
   stone: '#5F6B62',
 } as const;
 
-export const colors = {
+const light = {
   bg: '#F4F6EF',
   surface: '#FFFFFF',
   text: palette.ink,
@@ -38,10 +40,16 @@ export const colors = {
   okSoft: '#E3F2E6',
 
   onAccent: '#FFFFFF',
+  inverse: palette.ink,
+  inverseText: '#FFFFFF',
   checkBorder: '#B7C2B3',
   overlay: 'rgba(12, 20, 14, 0.92)',
   shadow: palette.ink,
-} as const;
+};
+
+export type ThemeColors = { [K in keyof typeof light]: string };
+
+export const printColors: ThemeColors = light;
 
 export const radius = {
   sm: 10,
@@ -58,13 +66,33 @@ export const font = {
   black: 'Manrope_800ExtraBold',
 } as const;
 
-export const type = {
-  title: { fontFamily: font.black, fontSize: 30, letterSpacing: -0.6, color: colors.text },
-  heading: { fontFamily: font.black, fontSize: 17, color: colors.text },
-  body: { fontFamily: font.bold, fontSize: 16, color: colors.text },
-  label: { fontFamily: font.bold, fontSize: 14, color: colors.muted },
-  caption: { fontFamily: font.medium, fontSize: 13, color: colors.muted },
-  number: { fontFamily: font.black, fontSize: 20, color: colors.text },
-} as const;
-
 export const touch = 44;
+
+Appearance.setColorScheme('light');
+
+const typeFor = (c: ThemeColors) =>
+  ({
+    title: { fontFamily: font.black, fontSize: 30, letterSpacing: -0.6, color: c.text },
+    heading: { fontFamily: font.black, fontSize: 17, color: c.text },
+    body: { fontFamily: font.bold, fontSize: 16, color: c.text },
+    label: { fontFamily: font.bold, fontSize: 14, color: c.muted },
+    caption: { fontFamily: font.medium, fontSize: 13, color: c.muted },
+    number: { fontFamily: font.black, fontSize: 20, color: c.text },
+  }) as const;
+
+export type Typography = ReturnType<typeof typeFor>;
+
+const theme = { colors: light as ThemeColors, type: typeFor(light) };
+
+export function useTheme() {
+  return theme;
+}
+
+export function themed<T extends StyleSheet.NamedStyles<T> | StyleSheet.NamedStyles<any>>(
+  factory: (colors: ThemeColors) => T & StyleSheet.NamedStyles<any>,
+) {
+  let sheet: T | null = null;
+  return function useStyles(): T {
+    return (sheet ??= StyleSheet.create(factory(light)));
+  };
+}

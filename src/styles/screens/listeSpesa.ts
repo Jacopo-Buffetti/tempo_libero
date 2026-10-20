@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   center: { textAlign: 'center' },
@@ -93,4 +92,15 @@ export const styles = StyleSheet.create({
   dateDay: { fontFamily: font.black, fontSize: 16, color: colors.text, lineHeight: 18 },
   dateMonth: { fontFamily: font.bold, fontSize: 10, color: colors.muted, textTransform: 'uppercase' },
   amount: { fontFamily: font.black, fontSize: 16, color: colors.text },
-});
+  refundCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space(3),
+    marginTop: space(3),
+    padding: space(4),
+    borderRadius: radius.lg,
+    backgroundColor: colors.warnSoft,
+  },
+  refundTitle: { fontFamily: font.bold, fontSize: 15, color: colors.warnInk },
+  refundAmount: { fontFamily: font.black, fontSize: 18, color: colors.warnInk },
+}));

@@ -36,8 +36,8 @@ import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
 import { DateTimeField } from '@/components/DateTimeField';
 import { TimeField } from '@/components/TimeField';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/affitto';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/affitto';
 
 type ClientPick = Pick<Client, 'id' | 'first_name' | 'last_name' | 'phone'>;
 
@@ -49,6 +49,8 @@ const internationalPhone = (phone: string) => {
 };
 
 export default function Affitto() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const params = useLocalSearchParams<{ id?: string; date?: string; clientId?: string }>();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
@@ -438,6 +440,27 @@ export default function Affitto() {
             />
           </View>
 
+          {isEdit && space === 'cramaccioli' && (
+            <View style={styles.documents}>
+              <Text style={type.label}>Documenti</Text>
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: '/calendario/contratto-parco', params: { rentalId: params.id! } })
+                }
+                style={({ pressed }) => [styles.docButton, pressed && styles.pressed]}
+              >
+                <Ionicons name="document-text-outline" size={22} color={colors.accent} />
+                <View style={styles.flex}>
+                  <Text style={type.body}>Contratto del Parco</Text>
+                  <Text style={type.caption}>
+                    Concessione d’uso dell’area, utenze e responsabilità, in PDF
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </Pressable>
+            </View>
+          )}
+
           {isEdit && space === 'stanza' && (
             <View style={styles.documents}>
               <Text style={type.label}>Documenti</Text>
@@ -513,6 +536,8 @@ function MoneyRow({
   onChange: (v: string) => void;
   bad: boolean;
 }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   return (
     <View style={[styles.moneyRow, styles.dividerLine]}>
       <Text style={[type.body, styles.flex]}>{label}</Text>
@@ -543,6 +568,8 @@ function SwitchRow({
   onChange: (v: boolean) => void;
   last?: boolean;
 }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   return (
     <View style={[styles.moneyRow, !last && styles.dividerLine]}>
       <Text style={[type.body, styles.flex]}>{label}</Text>

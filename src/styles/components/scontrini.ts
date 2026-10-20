@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   wrap: { gap: space(3) },
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   total: { fontFamily: font.black, fontSize: 18, color: colors.accent },
@@ -78,4 +77,4 @@ export const styles = StyleSheet.create({
 
   zoom: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center' },
   zoomImage: { width: '100%', height: '90%' },
-});
+}));

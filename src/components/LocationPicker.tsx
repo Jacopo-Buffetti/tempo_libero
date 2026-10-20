@@ -2,8 +2,8 @@ import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LOCATIONS, type Location } from '@/lib/items';
-import { colors } from '@/theme/tokens';
-import { styles } from '@/styles/components/locationPicker';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/components/locationPicker';
 
 const LOCATION_ICONS: Record<Location, keyof typeof Ionicons.glyphMap> = {
   magazzino: 'cube-outline',
@@ -17,6 +17,8 @@ type Props = {
 };
 
 export function LocationPicker({ value, onChange }: Props) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   function toggle(location: Location) {
     const selected = value.includes(location);
     if (selected && value.length === 1) return;

@@ -4,8 +4,8 @@ import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/theme/tokens';
-import { styles } from '@/styles/components/timeField';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/components/timeField';
 
 type Props = {
   label: string;
@@ -18,6 +18,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const toTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
 
 export function TimeField({ label, value, onChange, fallback = '20:00:00' }: Props) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const date = new Date(`2000-01-01T${value ?? fallback}`);
 
   function open() {

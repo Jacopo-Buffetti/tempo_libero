@@ -12,6 +12,7 @@ export type Person = {
   nickname: string | null;
   active: boolean;
   position: number;
+  user_id?: string | null;
 };
 
 export type ShiftRow = { id: string; shift_date: string; person_id: string };
@@ -153,7 +154,7 @@ export function usePeople(orgId?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('shift_people')
-        .select('id, name, nickname, active, position')
+        .select('id, name, nickname, active, position, user_id')
         .eq('org_id', orgId!)
         .order('position');
       if (error) throw error;

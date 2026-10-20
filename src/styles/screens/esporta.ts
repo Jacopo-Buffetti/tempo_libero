@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   topBar: { paddingHorizontal: space(2), paddingVertical: space(1) },
@@ -33,4 +32,4 @@ export const styles = StyleSheet.create({
   rowPressed: { backgroundColor: colors.pressed },
   divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
   warn: { fontFamily: font.bold, fontSize: 14, color: colors.warn },
-});
+}));

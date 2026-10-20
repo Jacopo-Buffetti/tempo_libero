@@ -8,8 +8,8 @@ import { useGenerateShifts, usePeople, useShifts } from '@/lib/turni';
 import { errorMessage } from '@/lib/spesa';
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/genera';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/genera';
 
 const PERIODS = [
   { months: 1, label: 'Solo questo mese' },
@@ -22,6 +22,8 @@ const longDate = (iso: string) =>
   dateOf(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
 
 export default function GeneraTurni() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const params = useLocalSearchParams<{ month?: string }>();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
@@ -143,6 +145,8 @@ export default function GeneraTurni() {
 }
 
 function Rule({ text }: { text: string }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View style={styles.rule}>
       <Ionicons name="checkmark-circle" size={18} color={colors.ok} />

@@ -29,14 +29,16 @@ import { formatEuro } from '@/lib/spesa';
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
 import { MonthGrid } from '@/components/calendario/MonthGrid';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/calendario';
+import { useTheme, type ThemeColors } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/calendario';
 
 type Mode = 'turni' | 'affitti';
 
-const SPACE_COLORS: Record<Space, string> = { stanza: colors.accent, cramaccioli: colors.sun };
+const spaceColor = (space: Space, colors: ThemeColors) => (space === 'stanza' ? colors.accent : colors.sun);
 
 export default function Calendario() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
 
@@ -166,7 +168,7 @@ export default function Calendario() {
               ? isClosedDay(iso)
                 ? { muted: true, label: 'chiuso' }
                 : { label: shortOf(iso), highlight: isHardDay(iso) }
-              : { dots: (rentalsByDate.get(iso) ?? []).map((r) => SPACE_COLORS[r.space]) }
+              : { dots: (rentalsByDate.get(iso) ?? []).map((r) => spaceColor(r.space, colors)) }
           }
         />
 
@@ -251,13 +253,15 @@ export default function Calendario() {
 }
 
 function RentalRow({ rental, withDate }: { rental: Rental; withDate?: boolean }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const pay = paymentState(rental);
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/calendario/affitto', params: { id: rental.id } })}
       style={({ pressed }) => [styles.rental, pressed && styles.rentalPressed]}
     >
-      <View style={[styles.spaceBar, { backgroundColor: SPACE_COLORS[rental.space] }]} />
+      <View style={[styles.spaceBar, { backgroundColor: spaceColor(rental.space, colors) }]} />
       <View style={styles.flex}>
         <Text style={type.body} numberOfLines={1}>
           {clientName(rental.clients)}

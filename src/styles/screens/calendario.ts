@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   center: { textAlign: 'center' },
@@ -95,4 +94,4 @@ export const styles = StyleSheet.create({
   paymentWarn: { color: colors.warn },
   price: { fontFamily: font.black, fontSize: 15, color: colors.text },
   due: { fontFamily: font.bold, fontSize: 13, color: colors.warn },
-});
+}));

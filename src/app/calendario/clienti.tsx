@@ -5,10 +5,12 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { clientName, useClients } from '@/lib/affitti';
 import { useMembership } from '@/providers/AuthProvider';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/clienti';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/clienti';
 
 export default function Clienti() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
   const [search, setSearch] = useState('');

@@ -25,10 +25,12 @@ import {
 } from '@/lib/affitti';
 import { errorMessage, formatEuro } from '@/lib/spesa';
 import { useMembership } from '@/providers/AuthProvider';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/cliente';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/cliente';
 
 export default function Cliente() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = id === 'nuovo';
   const membership = useMembership();

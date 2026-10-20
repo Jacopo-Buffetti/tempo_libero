@@ -15,6 +15,32 @@ import {
 } from '@/lib/items';
 
 export type PaymentSource = Database['public']['Enums']['payment_source'];
+
+export type PayerKind = 'cassa' | 'consigliere' | 'membro' | 'persona' | 'nuova';
+
+export type PayerChoice = { kind: PayerKind; ref?: string | null; name?: string };
+
+export type PayerOption = {
+  kind: Exclude<PayerKind, 'cassa' | 'nuova'>;
+  id: string;
+  name: string;
+  user_id: string | null;
+};
+
+export type PaymentInput = {
+  payer: PayerChoice;
+  itemIds: string[];
+  amountCents: number | null;
+  shop: string;
+  paidOn: string;
+};
+
+const payerArgs = (p: PayerChoice) => ({
+  p_payer_kind: p.kind,
+  p_payer_ref: p.kind === 'cassa' || p.kind === 'nuova' ? null : (p.ref ?? null),
+  p_payer_name: p.kind === 'nuova' ? (p.name?.trim() ?? null) : null,
+});
+
 export type ListSummary = Database['public']['Views']['shopping_list_summary']['Row'];
 
 export const LIST_ITEM_COLUMNS =
@@ -349,19 +375,9 @@ export function useUpdateListItem(listId?: string) {
 export function useCloseList(listId?: string) {
   const invalidate = useInvalidateSpesa();
   return useMutation({
-    mutationFn: async (v: {
-      shop: string;
-      closedOn: string;
-      paidBy: PaymentSource;
-      prices: { id: string; price_cents: number | null }[];
-      carryOver: boolean;
-    }) => {
+    mutationFn: async (v: { carryOver: boolean }) => {
       const { data, error } = await supabase.rpc('close_shopping_list', {
         p_list_id: listId!,
-        p_shop: v.shop,
-        p_closed_on: v.closedOn,
-        p_paid_by: v.paidBy,
-        p_prices: v.prices,
         p_carry_over: v.carryOver,
       });
       if (error) throw error;
@@ -485,9 +501,15 @@ export type Run = {
   run_date: string;
   paid_by: PaymentSource;
   paid_by_user: string | null;
+  paid_by_person: string | null;
+  paid_by_name: string | null;
+  payer_id: string | null;
+  amount_cents: number | null;
   reimbursed: boolean;
+  reimbursed_on: string | null;
   created_at: string;
   total_cents: number;
+  amount_missing: boolean;
   receipts_count: number;
   receipts_missing: number;
   items_count: number;
@@ -496,7 +518,7 @@ export type Run = {
 
 type RawRun = Omit<
   Run,
-  'total_cents' | 'receipts_count' | 'receipts_missing' | 'items_count' | 'prices_missing'
+  'total_cents' | 'amount_missing' | 'receipts_count' | 'receipts_missing' | 'items_count' | 'prices_missing'
 > & {
   shopping_receipts: { total_cents: number | null }[];
   shopping_list_items: { price_cents: number | null; checked: boolean }[];
@@ -512,7 +534,7 @@ export function useRuns(listId?: string) {
       const { data, error } = await supabase
         .from('shopping_runs')
         .select(
-          'id, shop, run_date, paid_by, paid_by_user, reimbursed, created_at, shopping_receipts(total_cents), shopping_list_items(price_cents, checked)',
+          'id, shop, run_date, paid_by, paid_by_user, paid_by_person, paid_by_name, payer_id, amount_cents, reimbursed, reimbursed_on, created_at, shopping_receipts(total_cents), shopping_list_items(price_cents, checked)',
         )
         .eq('list_id', listId!)
         .order('run_date')
@@ -520,41 +542,24 @@ export function useRuns(listId?: string) {
       if (error) throw error;
       return (data as unknown as RawRun[]).map(({ shopping_receipts, shopping_list_items, ...r }) => {
         const items = shopping_list_items.filter((i) => i.checked);
-        const fromReceipts = shopping_receipts.length > 0;
         return {
           ...r,
-          total_cents: fromReceipts
-            ? shopping_receipts.reduce((sum, x) => sum + (x.total_cents ?? 0), 0)
-            : items.reduce((sum, x) => sum + (x.price_cents ?? 0), 0),
+          total_cents: r.amount_cents ?? 0,
+          amount_missing: r.amount_cents == null,
           receipts_count: shopping_receipts.length,
           receipts_missing: shopping_receipts.filter((x) => x.total_cents == null).length,
           items_count: items.length,
-          prices_missing: fromReceipts ? 0 : items.filter((x) => x.price_cents == null).length,
+          prices_missing: items.filter((x) => x.price_cents == null).length,
         } as Run;
       });
     },
   });
 }
 
-export function useRegisterRun(listId?: string) {
+function usePaymentMutation<V>(run: (v: V) => Promise<unknown>) {
   const invalidate = useInvalidateSpesa();
   return useMutation({
-    mutationFn: async (v: {
-      shop: string;
-      runDate: string;
-      paidBy: PaymentSource;
-      prices: { id: string; price_cents: number | null }[];
-    }) => {
-      const { data, error } = await supabase.rpc('register_shopping_run', {
-        p_list_id: listId!,
-        p_shop: v.shop,
-        p_run_date: v.runDate,
-        p_paid_by: v.paidBy,
-        p_prices: v.prices,
-      });
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: run,
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidate();
@@ -562,16 +567,107 @@ export function useRegisterRun(listId?: string) {
   });
 }
 
-export function useSetRunReimbursed(listId?: string) {
-  const invalidate = useInvalidateSpesa();
-  return useMutation({
-    mutationFn: async ({ id, value }: { id: string; value: boolean }) => {
-      const { error } = await supabase.from('shopping_runs').update({ reimbursed: value }).eq('id', id);
+export function useCreatePayment(listId?: string) {
+  return usePaymentMutation(async (v: PaymentInput) => {
+    const { data, error } = await supabase.rpc('create_payment', {
+      p_list_id: listId!,
+      p_item_ids: v.itemIds,
+      ...payerArgs(v.payer),
+      p_amount_cents: v.amountCents,
+      p_shop: v.shop.trim() || null,
+      p_paid_on: v.paidOn,
+    });
+    if (error) throw error;
+    return data;
+  });
+}
+
+export function useUpdatePayment() {
+  return usePaymentMutation(async (v: Omit<PaymentInput, 'itemIds'> & { id: string; itemIds: string[] | null }) => {
+    const { error } = await supabase.rpc('update_payment', {
+      p_id: v.id,
+      p_item_ids: v.itemIds,
+      ...payerArgs(v.payer),
+      p_amount_cents: v.amountCents,
+      p_shop: v.shop.trim() || null,
+      p_paid_on: v.paidOn,
+    });
+    if (error) throw error;
+  });
+}
+
+export function useDeletePayment() {
+  return usePaymentMutation(async (id: string) => {
+    const { error } = await supabase.rpc('delete_payment', { p_id: id });
+    if (error) throw error;
+  });
+}
+
+export function useSetPaymentsReimbursed() {
+  return usePaymentMutation(async ({ ids, value }: { ids: string[]; value: boolean }) => {
+    const { error } = await supabase.rpc('set_payments_reimbursed', { p_ids: ids, p_value: value });
+    if (error) throw error;
+  });
+}
+
+export function usePayerOptions(orgId?: string) {
+  return useQuery({
+    queryKey: ['spesa', 'payers', orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('payer_options', { p_org: orgId! });
       if (error) throw error;
+      return (data ?? []) as PayerOption[];
     },
-    onSuccess: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      invalidate();
+  });
+}
+
+export const payerChoiceOf = (run: Run): PayerChoice => {
+  if (run.paid_by === 'cassa') return { kind: 'cassa' };
+  if (run.paid_by_person) return { kind: 'consigliere', ref: run.paid_by_person };
+  if (run.payer_id) return { kind: 'persona', ref: run.payer_id };
+  if (run.paid_by_user) return { kind: 'membro', ref: run.paid_by_user };
+  return { kind: 'nuova', name: run.paid_by_name ?? '' };
+};
+
+export type Refund = {
+  id: string;
+  list_id: string;
+  run_date: string;
+  shop: string | null;
+  amount_cents: number | null;
+  paid_by_user: string | null;
+  paid_by_person: string | null;
+  payer_id: string | null;
+  paid_by_name: string | null;
+  shopping_lists: { name: string } | null;
+};
+
+export const refundPersonKey = (r: Pick<Refund, 'paid_by_person' | 'paid_by_user' | 'payer_id' | 'paid_by_name'>) =>
+  r.paid_by_person
+    ? `c:${r.paid_by_person}`
+    : r.paid_by_user
+      ? `u:${r.paid_by_user}`
+      : r.payer_id
+        ? `p:${r.payer_id}`
+        : `n:${(r.paid_by_name ?? '').trim().toLowerCase()}`;
+
+export function useRefunds(orgId?: string) {
+  return useQuery({
+    queryKey: ['spesa', 'refunds', orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('shopping_runs')
+        .select(
+          'id, list_id, run_date, shop, amount_cents, paid_by_user, paid_by_person, payer_id, paid_by_name, shopping_lists(name)',
+        )
+        .eq('org_id', orgId!)
+        .eq('paid_by', 'volontario')
+        .eq('reimbursed', false)
+        .order('run_date');
+      if (error) throw error;
+      return data as unknown as Refund[];
     },
   });
 }
@@ -592,11 +688,11 @@ export function usePayerLabel(orgId?: string, currentUserId?: string) {
       return data;
     },
   });
-  return (paidBy: PaymentSource, userId: string | null) => {
-    if (paidBy === 'cassa') return 'Cassa Pro Loco';
-    if (userId && userId === currentUserId) return 'Anticipata da te';
-    const name = members.data?.find((m) => m.user_id === userId)?.display_name;
-    return `Anticipata da ${name ?? 'un volontario'}`;
+  return (run: Pick<Run, 'paid_by' | 'paid_by_user' | 'paid_by_name'>) => {
+    if (run.paid_by === 'cassa') return 'Cassa Pro Loco';
+    if (run.paid_by_user && run.paid_by_user === currentUserId) return 'Pagato da te';
+    const name = run.paid_by_name ?? members.data?.find((m) => m.user_id === run.paid_by_user)?.display_name;
+    return `Pagato da ${name ?? 'un volontario'}`;
   };
 }
 

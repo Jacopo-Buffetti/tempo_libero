@@ -33,12 +33,14 @@ import { Chip } from '@/components/Chip';
 import { DateTimeField } from '@/components/DateTimeField';
 import { TimeField } from '@/components/TimeField';
 import { Field, MoneyField, Section } from '@/components/FormField';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/verbale';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/verbale';
 
 type Step = 'consegna' | 'riconsegna';
 
 export default function Verbale() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const { rentalId } = useLocalSearchParams<{ rentalId: string }>();
   const rental = useRental(rentalId);
   const client = useClient(rental.data?.client_id);
@@ -338,6 +340,8 @@ function CheckRow({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View style={styles.check}>
       <Text style={styles.checkLabel}>{label}</Text>
@@ -362,6 +366,8 @@ function YesNo({
   value: boolean | null;
   onChange: (v: boolean | null) => void;
 }) {
+  const styles = useStyles();
+  const { type } = useTheme();
   return (
     <View style={styles.yesNo}>
       <Text style={[type.body, styles.flex]}>{label}</Text>

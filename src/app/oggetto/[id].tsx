@@ -23,8 +23,9 @@ import {
 } from '@/lib/items';
 import { useAuth, useMembership } from '@/providers/AuthProvider';
 import { Stepper } from '@/components/Stepper';
-import { colors, space, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/oggetto';
+import { space, useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/oggetto';
+import { useRole } from '@/lib/ruoli';
 
 type Movement = {
   id: number;
@@ -35,6 +36,8 @@ type Movement = {
 };
 
 export default function DettaglioOggetto() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const membership = useMembership();
@@ -43,7 +46,7 @@ export default function DettaglioOggetto() {
   const adjust = useAdjustQuantity();
   const broken = useAdjustBroken();
   const removeItem = useDeleteItem();
-  const isAdmin = membership.data?.role === 'admin';
+  const { isConsigliere } = useRole();
   const [count, setCount] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
@@ -200,39 +203,47 @@ export default function DettaglioOggetto() {
             <View style={styles.flex}>
               <Text style={type.body}>{isEquipment ? 'Totale pezzi' : 'Quantità'}</Text>
               <Text style={type.caption}>
-                {isEquipment ? 'Pezzi acquistati o persi' : `+ e − di ${formatQty(step)} ${it.unit}`}
+                {!isConsigliere
+                  ? it.unit
+                  : isEquipment
+                    ? 'Pezzi acquistati o persi'
+                    : `+ e − di ${formatQty(step)} ${it.unit}`}
               </Text>
             </View>
-            <Pressable
-              onPress={() => {
-                Haptics.selectionAsync();
-                adjust.mutate({ id: it.id, delta: -step });
-              }}
-              disabled={cantRemove}
-              accessibilityLabel={`Togli ${formatQty(step)} ${it.unit}`}
-              style={({ pressed }) => [
-                styles.step,
-                cantRemove && styles.disabled,
-                pressed && styles.stepPressed,
-              ]}
-            >
-              <Text style={styles.stepText}>−</Text>
-            </Pressable>
+            {isConsigliere && (
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  adjust.mutate({ id: it.id, delta: -step });
+                }}
+                disabled={cantRemove}
+                accessibilityLabel={`Togli ${formatQty(step)} ${it.unit}`}
+                style={({ pressed }) => [
+                  styles.step,
+                  cantRemove && styles.disabled,
+                  pressed && styles.stepPressed,
+                ]}
+              >
+                <Text style={styles.stepText}>−</Text>
+              </Pressable>
+            )}
             <Text style={styles.qty}>{formatQty(it.qty)}</Text>
-            <Pressable
-              onPress={() => {
-                Haptics.selectionAsync();
-                adjust.mutate({ id: it.id, delta: step });
-              }}
-              accessibilityLabel={`Aggiungi ${formatQty(step)} ${it.unit}`}
-              style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}
-            >
-              <Text style={styles.stepText}>+</Text>
-            </Pressable>
+            {isConsigliere && (
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  adjust.mutate({ id: it.id, delta: step });
+                }}
+                accessibilityLabel={`Aggiungi ${formatQty(step)} ${it.unit}`}
+                style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}
+              >
+                <Text style={styles.stepText}>+</Text>
+              </Pressable>
+            )}
           </View>
         </View>
 
-        {isEquipment && (
+        {isEquipment && isConsigliere && (
           <View style={styles.card}>
             <View style={[styles.cardRow, styles.cardDivider]}>
               <View style={styles.flex}>
@@ -309,7 +320,7 @@ export default function DettaglioOggetto() {
         </View>
 
         <View style={styles.danger}>
-          {isAdmin ? (
+          {isConsigliere ? (
             <Pressable
               onPress={confirmDelete}
               disabled={removeItem.isPending}
@@ -326,7 +337,7 @@ export default function DettaglioOggetto() {
             </Pressable>
           ) : (
             <Text style={[type.caption, styles.centerText]}>
-              Per eliminare un oggetto chiedi a un amministratore.
+              L’inventario lo modificano i consiglieri: qui puoi solo consultarlo.
             </Text>
           )}
         </View>
@@ -348,6 +359,8 @@ function Stat({
   alert?: boolean;
   big?: boolean;
 }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   return (
     <View style={styles.stat}>
       <Text style={type.caption}>{label}</Text>

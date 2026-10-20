@@ -19,10 +19,12 @@ import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
 import { DateTimeField } from '@/components/DateTimeField';
 import { PriceModeField } from '@/components/PriceModeField';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/menu/nuovo';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/menu/nuovo';
 
 export default function NuovoMenu() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const membership = useMembership();
   const orgId = membership.data?.org_id;

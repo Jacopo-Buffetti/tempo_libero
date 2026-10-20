@@ -39,14 +39,16 @@ import {
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
 import { Stepper } from '@/components/Stepper';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/spesa/voce';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/spesa/voce';
 
 type Mode = 'inventory' | 'new-product' | 'list-only';
 
 const defaultQty = (unit: string) => (unit === 'g' || unit === 'ml' ? 500 : 1);
 
 export default function VoceLista() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const params = useLocalSearchParams<{
     listId: string;
     location: string;

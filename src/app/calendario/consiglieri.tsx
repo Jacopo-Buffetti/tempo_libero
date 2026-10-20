@@ -7,10 +7,12 @@ import { dateOf, todayIso } from '@/lib/calendario';
 import { personLabel, useSavePerson, usePeople, useShifts } from '@/lib/turni';
 import { errorMessage } from '@/lib/spesa';
 import { useMembership } from '@/providers/AuthProvider';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/consiglieri';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/consiglieri';
 
 export default function Consiglieri() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
   const isAdmin = membership.data?.role === 'admin';

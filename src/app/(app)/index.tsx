@@ -18,12 +18,16 @@ import {
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
 import { ItemRow } from '@/components/ItemRow';
-import { colors, space, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/inventario';
+import { space, useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/inventario';
+import { useRole } from '@/lib/ruoli';
 
 type Filter = 'tutti' | 'scorta' | 'riparare';
 
 export default function Inventario() {
+  const styles = useStyles();
+  const { isConsigliere } = useRole();
+  const { colors, type } = useTheme();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
   const [location, setLocation] = useState<Location>('magazzino');
@@ -166,19 +170,21 @@ export default function Inventario() {
             item={item}
             isFirst={index === 0}
             isLast={index === visible.length - 1}
-            onAdjust={(delta) => adjust.mutate({ id: item.id, delta })}
+            onAdjust={isConsigliere ? (delta) => adjust.mutate({ id: item.id, delta }) : undefined}
             onPress={() => router.push({ pathname: '/oggetto/[id]', params: { id: item.id } })}
           />
         )}
       />
 
-      <Pressable
-        onPress={() => router.push({ pathname: '/nuovo-oggetto', params: { location } })}
-        accessibilityLabel={`Aggiungi un oggetto in ${label}`}
-        style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
-      >
-        <Ionicons name="add" size={30} color={colors.onAccent} />
-      </Pressable>
+      {isConsigliere && (
+        <Pressable
+          onPress={() => router.push({ pathname: '/nuovo-oggetto', params: { location } })}
+          accessibilityLabel={`Aggiungi un oggetto in ${label}`}
+          style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
+        >
+          <Ionicons name="add" size={30} color={colors.onAccent} />
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 }

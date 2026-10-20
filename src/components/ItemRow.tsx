@@ -1,8 +1,8 @@
 import { Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { formatQty, itemNote, locationLabel, stepFor, type Item, unitWord } from '@/lib/items';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/components/itemRow';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/components/itemRow';
 
 type Props = {
   item: Item;
@@ -15,6 +15,8 @@ type Props = {
 };
 
 export function ItemRow({ item, isFirst, isLast, onAdjust, showLocation, highlight, onPress }: Props) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const note = itemNote(item);
   const step = stepFor(item.unit);
   const cantRemove = item.qty - step < item.broken_qty;
@@ -88,6 +90,8 @@ export function ItemRow({ item, isFirst, isLast, onAdjust, showLocation, highlig
 }
 
 function Name({ name, highlight }: { name: string; highlight?: string }) {
+  const styles = useStyles();
+  const { type } = useTheme();
   const term = highlight?.trim();
   const at = term ? name.toLowerCase().indexOf(term.toLowerCase()) : -1;
 

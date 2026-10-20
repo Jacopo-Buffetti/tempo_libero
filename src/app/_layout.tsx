@@ -10,7 +10,7 @@ import {
   Manrope_800ExtraBold,
 } from '@expo-google-fonts/manrope';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
-import { colors } from '@/theme/tokens';
+import { useTheme } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -21,6 +21,7 @@ const queryClient = new QueryClient({
 });
 
 function RootNavigator() {
+  const { colors } = useTheme();
   const { session, ready } = useAuth();
   const [fontsLoaded] = useFonts({ Manrope_500Medium, Manrope_700Bold, Manrope_800ExtraBold });
 
@@ -43,6 +44,8 @@ function RootNavigator() {
           <Stack.Screen name="spesa/nuova" options={{ presentation: 'modal' }} />
           <Stack.Screen name="spesa/[id]" />
           <Stack.Screen name="spesa/chiudi/[id]" />
+          <Stack.Screen name="spesa/pagamento" />
+          <Stack.Screen name="spesa/rimborsi" />
           <Stack.Screen name="spesa/voce" options={{ presentation: 'modal' }} />
           <Stack.Screen name="spesa/modifica/[id]" options={{ presentation: 'modal' }} />
           <Stack.Screen name="menu/nuovo" options={{ presentation: 'modal' }} />
@@ -55,9 +58,12 @@ function RootNavigator() {
           <Stack.Screen name="calendario/consiglieri" />
           <Stack.Screen name="calendario/affitto" options={{ presentation: 'modal' }} />
           <Stack.Screen name="calendario/contratto" />
+          <Stack.Screen name="calendario/contratto-parco" />
           <Stack.Screen name="calendario/verbale" />
           <Stack.Screen name="calendario/clienti" />
           <Stack.Screen name="calendario/cliente/[id]" />
+          <Stack.Screen name="membri/index" />
+          <Stack.Screen name="membri/[id]" options={{ presentation: 'modal' }} />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="login" />

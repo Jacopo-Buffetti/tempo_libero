@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { qtyWithUnit } from '@/lib/items';
 import {
@@ -8,13 +9,13 @@ import {
   parseEuro,
   runDateLabel,
   useSetListItemPrice,
-  useSetRunReimbursed,
+  useSetPaymentsReimbursed,
   type ListItem,
   type Run,
 } from '@/lib/spesa';
 import { Scontrini } from '@/components/spesa/Scontrini';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/components/runCard';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/components/runCard';
 
 type Props = {
   run: Run;
@@ -23,22 +24,14 @@ type Props = {
   orgId?: string;
   items: ListItem[];
   payerName: string;
-  editable?: boolean;
   initiallyOpen?: boolean;
 };
 
-export function RunCard({
-  run,
-  index,
-  listId,
-  orgId,
-  items,
-  payerName,
-  editable = true,
-  initiallyOpen = false,
-}: Props) {
+export function RunCard({ run, index, listId, orgId, items, payerName, initiallyOpen = false }: Props) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const [open, setOpen] = useState(initiallyOpen);
-  const reimburse = useSetRunReimbursed(listId);
+  const reimburse = useSetPaymentsReimbursed();
   const setPrice = useSetListItemPrice(listId);
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +57,15 @@ export function RunCard({
     if (cents !== saved) setPrice.mutate({ id, cents });
   }
 
-  const warnings = run.receipts_missing + run.prices_missing;
   const volunteer = run.paid_by === 'volontario';
+  const details = [
+    runDateLabel(run.run_date),
+    run.shop,
+    `${run.items_count} ${run.items_count === 1 ? 'articolo' : 'articoli'}`,
+    run.receipts_count ? `${run.receipts_count} ${run.receipts_count === 1 ? 'scontrino' : 'scontrini'}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <View style={styles.card}>
@@ -80,36 +80,42 @@ export function RunCard({
         </View>
         <View style={styles.flex}>
           <Text style={type.body} numberOfLines={1}>
-            {runDateLabel(run.run_date)}
-            {run.shop ? ` · ${run.shop}` : ''}
+            {payerName}
           </Text>
-          <Text style={[type.caption, warnings > 0 && styles.warnText]} numberOfLines={1}>
-            {run.items_count} {run.items_count === 1 ? 'articolo' : 'articoli'}
-            {run.receipts_count
-              ? ` · ${run.receipts_count} ${run.receipts_count === 1 ? 'scontrino' : 'scontrini'}`
-              : ''}
-            {warnings > 0 ? ' · importi da completare' : ''}
+          <Text style={type.caption} numberOfLines={1}>
+            {details}
           </Text>
+          {volunteer && (
+            <Text style={[type.caption, !run.reimbursed && styles.warnText]} numberOfLines={1}>
+              {run.reimbursed ? 'Rimborsato' : 'Da rimborsare'}
+            </Text>
+          )}
         </View>
-        <Text style={styles.total}>{formatEuro(run.total_cents)}</Text>
+        {run.amount_missing ? (
+          <Text style={styles.missing}>da inserire</Text>
+        ) : (
+          <Text style={styles.total}>{formatEuro(run.total_cents)}</Text>
+        )}
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.muted} />
       </Pressable>
 
       {open && (
         <View style={styles.body}>
-          <View style={styles.payer}>
-            <Ionicons name={volunteer ? 'person-outline' : 'wallet-outline'} size={18} color={colors.text} />
-            <View style={styles.flex}>
-              <Text style={styles.payerText}>{payerName}</Text>
-              {volunteer && (
+          {volunteer && (
+            <View style={styles.payer}>
+              <Ionicons name="person-outline" size={18} color={colors.text} />
+              <View style={styles.flex}>
+                <Text style={styles.payerText}>{payerName}</Text>
                 <Text style={[type.caption, !run.reimbursed && styles.warnText]}>
-                  {run.reimbursed ? 'Già rimborsata' : 'Da rimborsare'}
+                  {run.reimbursed
+                    ? run.reimbursed_on
+                      ? `Rimborsato il ${runDateLabel(run.reimbursed_on)}`
+                      : 'Rimborsato'
+                    : 'Da rimborsare'}
                 </Text>
-              )}
-            </View>
-            {volunteer && (
+              </View>
               <Pressable
-                onPress={() => reimburse.mutate({ id: run.id, value: !run.reimbursed })}
+                onPress={() => reimburse.mutate({ ids: [run.id], value: !run.reimbursed })}
                 disabled={reimburse.isPending}
                 style={({ pressed }) => [
                   styles.refund,
@@ -118,15 +124,13 @@ export function RunCard({
                 ]}
               >
                 <Text style={[styles.refundText, run.reimbursed && styles.refundUndoText]}>
-                  {run.reimbursed ? 'Annulla' : 'Rimborsata'}
+                  {run.reimbursed ? 'Annulla' : 'Rimborsato'}
                 </Text>
               </Pressable>
-            )}
-          </View>
+            </View>
+          )}
 
-          {editable ? (
-            <Scontrini orgId={orgId} listId={listId} runId={run.id} title="Scontrini di questa spesa" />
-          ) : null}
+          <Scontrini orgId={orgId} listId={listId} runId={run.id} title="Scontrini di questo pagamento" />
 
           {items.length > 0 && (
             <View style={styles.items}>
@@ -147,7 +151,7 @@ export function RunCard({
                         value={text}
                         onChangeText={(v) => setPrices((p) => ({ ...p, [l.id]: v }))}
                         onEndEditing={() => commit(l.id, l.price_cents)}
-                        placeholder={run.receipts_count ? '—' : '0,00'}
+                        placeholder="—"
                         placeholderTextColor={colors.placeholder}
                         keyboardType="decimal-pad"
                         accessibilityLabel={`Prezzo di ${l.name}`}
@@ -160,6 +164,16 @@ export function RunCard({
             </View>
           )}
           {error && <Text style={styles.error}>{error}</Text>}
+
+          <Pressable
+            onPress={() => router.push({ pathname: '/spesa/pagamento', params: { listId, id: run.id } })}
+            style={({ pressed }) => [styles.edit, pressed && styles.editPressed]}
+          >
+            <Ionicons name="create-outline" size={18} color={colors.accent} />
+            <Text style={styles.editText}>
+              {run.amount_missing ? 'Inserisci importo o modifica' : 'Modifica pagamento'}
+            </Text>
+          </Pressable>
         </View>
       )}
     </View>

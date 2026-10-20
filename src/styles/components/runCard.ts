@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   flex: { flex: 1 },
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden' },
   head: {
@@ -79,4 +78,17 @@ export const styles = StyleSheet.create({
     padding: 0,
   },
   error: { fontFamily: font.bold, fontSize: 13, color: colors.warn },
-});
+  missing: { fontFamily: font.bold, fontSize: 14, color: colors.warn },
+  edit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space(2),
+    minHeight: touch,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  editPressed: { backgroundColor: colors.pressed },
+  editText: { fontFamily: font.bold, fontSize: 15, color: colors.accent },
+}));

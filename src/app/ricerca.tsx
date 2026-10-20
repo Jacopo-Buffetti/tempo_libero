@@ -17,8 +17,8 @@ import {
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
 import { ItemRow } from '@/components/ItemRow';
-import { colors, space, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/ricerca';
+import { space, useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/ricerca';
 
 type Place = Location | 'tutti';
 
@@ -32,6 +32,8 @@ function useDebounced<T>(value: T, ms = 250) {
 }
 
 export default function Ricerca() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
 

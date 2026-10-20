@@ -22,8 +22,9 @@ import { quantityLabel } from '@/lib/condividiLista';
 import { errorMessage } from '@/lib/spesa';
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/datiInventario';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/datiInventario';
+import { useRole } from '@/lib/ruoli';
 
 const FORMATS: { value: ExportFormat; label: string; hint: string; icon: keyof typeof Ionicons.glyphMap }[] =
   [
@@ -35,6 +36,9 @@ const FORMATS: { value: ExportFormat; label: string; hint: string; icon: keyof t
 type Preview = { fileName: string; rows: ImportRow[]; problems: ImportProblem[] };
 
 export default function DatiInventario() {
+  const styles = useStyles();
+  const { isConsigliere } = useRole();
+  const { colors, type } = useTheme();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
   const queryClient = useQueryClient();
@@ -167,35 +171,37 @@ export default function DatiInventario() {
               </View>
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Carica da CSV</Text>
-              <Text style={type.caption}>
-                Colonne: nome, luogo (magazzino, cucina o bar), quantita e, se vuoi, tipo, unita,
-                scorta_minima, da_riparare. Gli oggetti che esistono già nello stesso luogo vengono
-                aggiornati, gli altri creati. Va bene anche un CSV salvato da Excel.
-              </Text>
-              <Pressable
-                onPress={choose}
-                disabled={busy !== null}
-                style={({ pressed }) => [styles.primary, pressed && styles.primaryPressed]}
-              >
-                {busy === 'pick' ? (
-                  <ActivityIndicator color={colors.onAccent} />
-                ) : (
-                  <>
-                    <Ionicons name="cloud-upload-outline" size={20} color={colors.onAccent} />
-                    <Text style={styles.primaryText}>Scegli il file CSV</Text>
-                  </>
-                )}
-              </Pressable>
-              <Pressable onPress={template} disabled={busy !== null} style={styles.link}>
-                {busy === 'template' ? (
-                  <ActivityIndicator color={colors.accent} />
-                ) : (
-                  <Text style={styles.linkText}>Scarica un modello da compilare</Text>
-                )}
-              </Pressable>
-            </View>
+            {isConsigliere && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Carica da CSV</Text>
+                <Text style={type.caption}>
+                  Colonne: nome, luogo (magazzino, cucina o bar), quantita e, se vuoi, tipo, unita,
+                  scorta_minima, da_riparare. Gli oggetti che esistono già nello stesso luogo vengono
+                  aggiornati, gli altri creati. Va bene anche un CSV salvato da Excel.
+                </Text>
+                <Pressable
+                  onPress={choose}
+                  disabled={busy !== null}
+                  style={({ pressed }) => [styles.primary, pressed && styles.primaryPressed]}
+                >
+                  {busy === 'pick' ? (
+                    <ActivityIndicator color={colors.onAccent} />
+                  ) : (
+                    <>
+                      <Ionicons name="cloud-upload-outline" size={20} color={colors.onAccent} />
+                      <Text style={styles.primaryText}>Scegli il file CSV</Text>
+                    </>
+                  )}
+                </Pressable>
+                <Pressable onPress={template} disabled={busy !== null} style={styles.link}>
+                  {busy === 'template' ? (
+                    <ActivityIndicator color={colors.accent} />
+                  ) : (
+                    <Text style={styles.linkText}>Scarica un modello da compilare</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
           </>
         )}
 

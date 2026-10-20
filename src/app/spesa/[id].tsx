@@ -4,10 +4,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useList } from '@/lib/spesa';
 import { ListaAperta } from '@/components/spesa/ListaAperta';
 import { ListaChiusa } from '@/components/spesa/ListaChiusa';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/spesa/lista';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/spesa/lista';
 
 export default function Lista() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const list = useList(id);
 

@@ -11,12 +11,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/login';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/login';
 
 type Step = 'email' | 'code';
 
 export default function Login() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');

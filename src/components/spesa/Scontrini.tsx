@@ -14,8 +14,8 @@ import {
   useSetReceiptTotal,
   type Receipt,
 } from '@/lib/scontrini';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/components/scontrini';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/components/scontrini';
 
 type Props = {
   orgId?: string;
@@ -25,6 +25,8 @@ type Props = {
 };
 
 export function Scontrini({ orgId, listId, runId = null, title = 'Scontrini' }: Props) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const receipts = useReceipts(listId, runId);
   const add = useAddReceipts(orgId, listId, runId);
   const [zoom, setZoom] = useState<string | null>(null);
@@ -117,6 +119,8 @@ export function Scontrini({ orgId, listId, runId = null, title = 'Scontrini' }: 
 }
 
 function ReceiptCard({ receipt, listId, onZoom }: { receipt: Receipt; listId: string; onZoom: () => void }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const setTotal = useSetReceiptTotal(listId);
   const retry = useRetryReceipt(listId);
   const remove = useDeleteReceipt(listId);

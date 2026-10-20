@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space } from '@/theme/tokens';
+import { font, radius, space, themed } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   tiles: { flexDirection: 'row', gap: space(2) },
   tile: {
     flex: 1,
@@ -28,4 +27,4 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
+}));

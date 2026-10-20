@@ -29,8 +29,8 @@ import {
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
 import { Stepper } from '@/components/Stepper';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/nuovoOggetto';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/nuovoOggetto';
 
 const LOCATION_ICONS: Record<Location, keyof typeof Ionicons.glyphMap> = {
   magazzino: 'cube-outline',
@@ -39,6 +39,8 @@ const LOCATION_ICONS: Record<Location, keyof typeof Ionicons.glyphMap> = {
 };
 
 export default function NuovoOggetto() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const params = useLocalSearchParams<{ location?: string }>();
   const membership = useMembership();
   const queryClient = useQueryClient();

@@ -23,13 +23,18 @@ import {
   useListItems,
   useUpdateList,
 } from '@/lib/spesa';
-import { colors, type } from '@/theme/tokens';
+import { useTheme } from '@/theme/tokens';
 import { LocationPicker } from '@/components/LocationPicker';
-import { styles } from '@/styles/screens/spesa/modifica';
+import { useStyles } from '@/styles/screens/spesa/modifica';
+import { useRole } from '@/lib/ruoli';
 
 export default function ModificaLista() {
+  const styles = useStyles();
+  const { isConsigliere, userId } = useRole();
+  const { colors, type } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const list = useList(id);
+  const canDelete = isConsigliere || (!!userId && list.data?.created_by === userId);
   const items = useListItems(id);
   const update = useUpdateList(id);
   const remove = useDeleteList(id);
@@ -146,25 +151,31 @@ export default function ModificaLista() {
 
           {error && <Text style={styles.error}>{error}</Text>}
 
-          <View style={styles.danger}>
-            <Pressable
-              onPress={confirmDelete}
-              disabled={remove.isPending}
-              style={({ pressed }) => [styles.deleteButton, pressed && { opacity: 0.85 }]}
-            >
-              {remove.isPending ? (
-                <ActivityIndicator color={colors.warn} />
-              ) : (
-                <>
-                  <Ionicons name="trash-outline" size={18} color={colors.warn} />
-                  <Text style={styles.deleteText}>Elimina la lista</Text>
-                </>
-              )}
-            </Pressable>
+          {canDelete ? (
+            <View style={styles.danger}>
+              <Pressable
+                onPress={confirmDelete}
+                disabled={remove.isPending}
+                style={({ pressed }) => [styles.deleteButton, pressed && { opacity: 0.85 }]}
+              >
+                {remove.isPending ? (
+                  <ActivityIndicator color={colors.warn} />
+                ) : (
+                  <>
+                    <Ionicons name="trash-outline" size={18} color={colors.warn} />
+                    <Text style={styles.deleteText}>Elimina la lista</Text>
+                  </>
+                )}
+              </Pressable>
+              <Text style={[type.caption, styles.center]}>
+                Può eliminarla chi l’ha creata o un amministratore.
+              </Text>
+            </View>
+          ) : (
             <Text style={[type.caption, styles.center]}>
-              Può eliminarla chi l’ha creata o un amministratore.
+              Solo chi ha creato la lista o un consigliere può eliminarla.
             </Text>
-          </View>
+          )}
         </ScrollView>
 
         <View style={styles.footer}>

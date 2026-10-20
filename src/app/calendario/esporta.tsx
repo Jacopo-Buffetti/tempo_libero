@@ -7,8 +7,8 @@ import { addMonths, monthOf, monthRange, monthTitle, todayIso } from '@/lib/cale
 import { personLabel, shareIcs, usePeople, useShifts } from '@/lib/turni';
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/esporta';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/esporta';
 
 const PERIODS = [
   { months: 1, label: 'Solo questo mese' },
@@ -17,6 +17,8 @@ const PERIODS = [
 ];
 
 export default function EsportaTurni() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const params = useLocalSearchParams<{ month?: string }>();
   const month = params.month ?? monthOf(todayIso());
   const membership = useMembership();

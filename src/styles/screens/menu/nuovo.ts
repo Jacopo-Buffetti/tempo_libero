@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   topBar: {
@@ -54,4 +53,4 @@ export const styles = StyleSheet.create({
   },
   saveDisabled: { opacity: 0.45 },
   saveText: { fontFamily: font.black, fontSize: 16, color: colors.onAccent },
-});
+}));

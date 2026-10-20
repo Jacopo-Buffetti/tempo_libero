@@ -25,8 +25,8 @@ import {
 } from '@/lib/spesa';
 import { Chip } from '@/components/Chip';
 import { useMembership } from '@/providers/AuthProvider';
-import { colors, space, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/listeSpesa';
+import { space, useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/listeSpesa';
 
 const refundOf = (l: ListSummary) =>
   (l.runs_count ?? 0) > 0
@@ -46,6 +46,8 @@ function useDebounced<T>(value: T, ms = 250) {
 }
 
 export default function ListeSpesa() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
   const lists = useListsSummary(orgId);
@@ -151,14 +153,25 @@ export default function ListeSpesa() {
             tintColor={colors.accent}
           />
         }
+        ListHeaderComponent={
+          refundTotal > 0 && !searching ? (
+            <Pressable
+              onPress={() => router.push('/spesa/rimborsi')}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.refundCard, pressed && { opacity: 0.85 }]}
+            >
+              <Ionicons name="return-down-back-outline" size={22} color={colors.warnInk} />
+              <Text style={[styles.refundTitle, styles.flex]}>Da rimborsare</Text>
+              <Text style={styles.refundAmount}>{formatEuro(refundTotal)}</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.warnInk} />
+            </Pressable>
+          ) : null
+        }
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeader}>
             <Text style={type.label}>{section.title}</Text>
             {section.key === 'storico' && !searching && closed.length > 0 && (
-              <Text style={type.caption}>
-                Questo mese {formatEuro(monthTotal)}
-                {refundTotal > 0 ? ` · da rimborsare ${formatEuro(refundTotal)}` : ''}
-              </Text>
+              <Text style={type.caption}>Questo mese {formatEuro(monthTotal)}</Text>
             )}
           </View>
         )}
@@ -219,6 +232,8 @@ function OpenCard({
   onPress: () => void;
   onLongPress: () => void;
 }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const total = list.items_count ?? 0;
   const done = list.checked_count ?? 0;
   const left = total - done;
@@ -243,13 +258,13 @@ function OpenCard({
           </Text>
           {(list.runs_count ?? 0) > 0 && (
             <Text style={styles.spent}>
-              Già speso {formatEuro(list.spent_cents)} in {list.runs_count}{' '}
-              {list.runs_count === 1 ? 'spesa' : 'spese'}
-              {(list.unregistered_count ?? 0) > 0 ? ` · ${list.unregistered_count} da registrare` : ''}
+              {formatEuro(list.spent_cents)} in {list.runs_count}{' '}
+              {list.runs_count === 1 ? 'pagamento' : 'pagamenti'}
+              {(list.unregistered_count ?? 0) > 0 ? ` · ${list.unregistered_count} da attribuire` : ''}
             </Text>
           )}
           {(list.runs_count ?? 0) === 0 && (list.unregistered_count ?? 0) > 0 && (
-            <Text style={styles.spent}>{list.unregistered_count} presi, da registrare</Text>
+            <Text style={styles.spent}>{list.unregistered_count} presi, da attribuire</Text>
           )}
           {match && <Text style={styles.match}>Contiene: {match}</Text>}
         </View>
@@ -282,21 +297,14 @@ function ClosedRow({
   onPress: () => void;
   onLongPress: () => void;
 }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const day = dateFromIso(list.closed_on ?? localIsoDate());
   const notes: string[] = [];
   let warn = false;
-  const withReceipts = (list.receipts_count ?? 0) > 0;
-  const missingAmounts = withReceipts ? (list.receipts_missing ?? 0) : (list.missing_prices ?? 0);
+  const missingAmounts = list.amounts_missing ?? 0;
   if (missingAmounts > 0) {
-    notes.push(
-      withReceipts
-        ? missingAmounts === 1
-          ? '1 scontrino da completare'
-          : `${missingAmounts} scontrini da completare`
-        : missingAmounts === 1
-          ? '1 prezzo da inserire'
-          : `${missingAmounts} prezzi da inserire`,
-    );
+    notes.push(missingAmounts === 1 ? '1 importo da inserire' : `${missingAmounts} importi da inserire`);
     warn = true;
   }
   if (toRefund(list)) {

@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font } from '@/theme/tokens';
+import { font, themed } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   chip: {
     height: 38,
     paddingHorizontal: 14,
@@ -13,5 +12,4 @@ export const styles = StyleSheet.create({
   idle: { backgroundColor: colors.surface, borderColor: colors.border },
   pressed: { backgroundColor: colors.segment },
   label: { fontFamily: font.bold, fontSize: 13, color: colors.text },
-  labelActive: { color: colors.onAccent },
-});
+}));

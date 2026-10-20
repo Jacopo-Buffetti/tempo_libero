@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, space, touch } from '@/theme/tokens';
+import { font, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   centered: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -12,4 +11,4 @@ export const styles = StyleSheet.create({
   },
   link: { minHeight: touch, justifyContent: 'center' },
   linkText: { fontFamily: font.bold, fontSize: 15, color: colors.accent },
-});
+}));

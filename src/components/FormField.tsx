@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react';
 import { Text, TextInput, View, type TextInputProps } from 'react-native';
 import { parseEuro } from '@/lib/spesa';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/components/formField';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/components/formField';
 
 type FieldProps = Omit<TextInputProps, 'style'> & { label: string; hint?: string; warn?: string | null };
 
 export function Field({ label, hint, warn, multiline, ...input }: FieldProps) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
@@ -34,6 +36,8 @@ export function MoneyField({
   value: string;
   onChangeText: (v: string) => void;
 }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const bad = value.trim() !== '' && parseEuro(value) == null;
   return (
     <View style={styles.moneyRow}>
@@ -55,6 +59,8 @@ export function MoneyField({
 }
 
 export function Section({ title, children, hint }: { title: string; children: ReactNode; hint?: string }) {
+  const styles = useStyles();
+  const { type } = useTheme();
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>

@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   centered: { alignItems: 'center', justifyContent: 'center', padding: space(8) },
   flex: { flex: 1 },
@@ -29,6 +28,7 @@ export const styles = StyleSheet.create({
   divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
   label: { fontFamily: font.bold, fontSize: 13, color: colors.muted },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space(2) },
+  usage: { gap: space(2) },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: space(3), padding: space(4) },
   linkCard: {
     flexDirection: 'row',
@@ -65,4 +65,4 @@ export const styles = StyleSheet.create({
   },
   primaryPressed: { backgroundColor: colors.accentInk },
   primaryText: { fontFamily: font.black, fontSize: 16, color: colors.onAccent },
-});
+}));

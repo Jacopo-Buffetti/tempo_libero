@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { paddingHorizontal: space(2), paddingVertical: space(1) },
   back: { flexDirection: 'row', alignItems: 'center', minHeight: touch, alignSelf: 'flex-start' },
@@ -55,4 +54,4 @@ export const styles = StyleSheet.create({
   addText: { fontFamily: font.black, fontSize: 15, color: colors.onAccent },
   disabled: { opacity: 0.45 },
   error: { fontFamily: font.bold, fontSize: 14, color: colors.warn },
-});
+}));

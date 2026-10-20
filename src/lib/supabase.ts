@@ -11,11 +11,13 @@ if (!url || !key) {
   throw new Error('Mancano EXPO_PUBLIC_SUPABASE_URL o EXPO_PUBLIC_SUPABASE_KEY nel file .env');
 }
 
+const hasStorage = Platform.OS !== 'web' || typeof window !== 'undefined';
+
 export const supabase = createClient<Database>(url, key, {
   auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
+    ...(hasStorage ? { storage: AsyncStorage } : {}),
+    autoRefreshToken: hasStorage,
+    persistSession: hasStorage,
     detectSessionInUrl: false,
   },
 });

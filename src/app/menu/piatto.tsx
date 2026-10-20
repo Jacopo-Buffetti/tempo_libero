@@ -39,14 +39,18 @@ import {
 import { centsToInput, errorMessage, parseEuro } from '@/lib/spesa';
 import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/menu/piatto';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/menu/piatto';
+import { useRole } from '@/lib/ruoli';
 
 const isSection = (v: unknown): v is Section => typeof v === 'string' && SECTIONS.some((s) => s.value === v);
 
 type Mode = 'inventory' | 'new-product' | 'list-only';
 
 export default function Piatto() {
+  const styles = useStyles();
+  const { isConsigliere } = useRole();
+  const { colors, type } = useTheme();
   const params = useLocalSearchParams<{ eventId: string; id?: string; section?: string }>();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
@@ -322,7 +326,7 @@ export default function Piatto() {
                     onPress={() => addIngredient('inventory', s.name, s.id)}
                   />
                 ))}
-                {!exactExists && (
+                {!exactExists && isConsigliere && (
                   <Option
                     icon="add-circle-outline"
                     color={colors.accent}
@@ -385,6 +389,8 @@ function IngredientRow({
   onChange: (qty: number) => void;
   onRemove: () => void;
 }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const line = ing.shopping_list_items;
   if (!line) return null;
   const step = stepFor(line.unit);
@@ -459,6 +465,8 @@ function Option({
   hint: string;
   onPress: () => void;
 }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   return (
     <Pressable
       onPress={onPress}

@@ -98,7 +98,7 @@ export type ContractRecord = {
   handover: Partial<HandoverData>;
 };
 
-const centsText = (cents: number | null | undefined) =>
+export const centsText = (cents: number | null | undefined) =>
   cents == null ? '' : formatEuro(cents).replace('€', '').trim();
 
 export function contractDefaults(rental: Rental, client: Record<string, string | null> | null): ContractData {
@@ -180,9 +180,10 @@ export function useSaveContract(rentalId?: string) {
   return useMutation({
     mutationFn: async (v: {
       id: string;
-      contract?: ContractData;
+      contract?: object;
       handover?: HandoverData;
       clientId?: string;
+      clientPatch?: Record<string, string | null | undefined>;
     }) => {
       const changes: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (v.contract) changes.contract = v.contract;
@@ -190,22 +191,14 @@ export function useSaveContract(rentalId?: string) {
       const { error } = await supabase.from('rental_contracts').update(changes).eq('id', v.id);
       if (error) throw error;
 
-      if (v.contract && v.clientId) {
-        const c = v.contract;
-        const { error: clientError } = await supabase
-          .from('clients')
-          .update({
-            first_name: c.firstName.trim() || undefined,
-            last_name: c.lastName.trim() || null,
-            birth_place: c.birthPlace.trim() || null,
-            birth_date: c.birthDate,
-            address: c.residence.trim() || null,
-            tax_code: c.taxCode.trim().toUpperCase() || null,
-            phone: c.phone.trim() || null,
-            email: c.email.trim() || null,
-          })
-          .eq('id', v.clientId);
-        if (clientError) throw clientError;
+      if (v.clientId && v.clientPatch) {
+        const patch = Object.fromEntries(
+          Object.entries(v.clientPatch).filter(([, value]) => value !== undefined),
+        );
+        if (Object.keys(patch).length) {
+          const { error: clientError } = await supabase.from('clients').update(patch).eq('id', v.clientId);
+          if (clientError) throw clientError;
+        }
       }
     },
     onSuccess: () => {
@@ -216,30 +209,42 @@ export function useSaveContract(rentalId?: string) {
   });
 }
 
-const escapeHtml = (s: string) =>
+export const roomClientPatch = (c: ContractData) => ({
+  first_name: c.firstName.trim() || undefined,
+  last_name: c.lastName.trim() || null,
+  birth_place: c.birthPlace.trim() || null,
+  birth_date: c.birthDate,
+  address: c.residence.trim() || null,
+  tax_code: c.taxCode.trim().toUpperCase() || null,
+  phone: c.phone.trim() || null,
+  email: c.email.trim() || null,
+});
+
+export const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-const fill = (value: string | null | undefined, width = 40) =>
+export const fill = (value: string | null | undefined, width = 40) =>
   value && value.trim()
     ? `<span class="v">${escapeHtml(value.trim())}</span>`
     : `<span class="b" style="width:${width}mm"></span>`;
 
-const dateText = (iso: string | null | undefined) =>
+export const dateText = (iso: string | null | undefined) =>
   iso ? dateOf(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
 
-const fillDate = (iso: string | null | undefined) =>
+export const fillDate = (iso: string | null | undefined) =>
   iso
     ? `<span class="v">${dateText(iso)}</span>`
     : '<span class="b" style="width:10mm"></span> / <span class="b" style="width:10mm"></span> / <span class="b" style="width:16mm"></span>';
 
-const fillMoney = (value: string, width = 24) => {
+export const fillMoney = (value: string, width = 24) => {
   const cents = parseEuro(value);
   return cents != null ? `<span class="v">${escapeHtml(centsText(cents))}</span>` : fill('', width);
 };
 
-const box = (checked: boolean) => `<span class="box${checked ? ' on' : ''}">${checked ? '✓' : ''}</span>`;
+export const box = (checked: boolean) =>
+  `<span class="box${checked ? ' on' : ''}">${checked ? '✓' : ''}</span>`;
 
-const signatureBlock = (title: string, name: string, signature: boolean) => `
+export const signatureBlock = (title: string, name: string, signature: boolean) => `
   <div class="sign">
     <div class="sign-title">${title}</div>
     ${name ? `<div class="sign-name">${escapeHtml(name)}</div>` : ''}
@@ -265,6 +270,7 @@ const STYLE = `
   .meta div { flex: 1; background: ${palette.leafSoft}; border-radius: 2mm; padding: 2.5mm 3.5mm; }
   .meta span { display: block; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 1px; color: ${palette.stone}; }
   .meta b { font-size: 11pt; color: ${palette.pine}; }
+  h3 { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 9.5pt; color: ${palette.pineDeep}; margin: 4mm 0 1.5mm; break-after: avoid; }
   h2 { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10pt; text-transform: uppercase; letter-spacing: 1.6px;
        color: ${palette.pine}; margin: 6mm 0 2mm; padding-bottom: 1mm; border-bottom: .3mm solid #D5DDCC; break-after: avoid; }
   p { margin: 0 0 2.2mm; text-align: justify; }
@@ -288,6 +294,9 @@ const STYLE = `
   .sign-area img { max-height: 17mm; max-width: 68mm; margin-bottom: -2mm; }
   .sign-line { border-top: .3mm solid ${palette.ink}; padding-top: 1mm; font-size: 8pt; color: ${palette.stone}; text-align: center; }
   .place { margin-top: 6mm; }
+  .approval { display: flex; align-items: flex-end; gap: 3mm; margin-top: 7mm; font-family: 'Helvetica Neue', Arial, sans-serif;
+              font-size: 9pt; color: ${palette.stone}; }
+  .approval-line { flex: 0 0 75mm; border-bottom: .3mm solid ${palette.ink}; height: 8mm; }
   table { width: 100%; border-collapse: collapse; margin: 1mm 0 3mm; font-size: 9.8pt; }
   th { text-align: left; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 7.5pt; text-transform: uppercase;
        letter-spacing: 1px; color: #fff; background: ${palette.pine}; padding: 2mm 3mm; }
@@ -300,7 +309,10 @@ const STYLE = `
   .options p { margin-bottom: 1.2mm; }
 `;
 
-const page = (title: string, body: string) => `<!doctype html><html lang="it"><head><meta charset="utf-8">
+export const page = (
+  title: string,
+  body: string,
+) => `<!doctype html><html lang="it"><head><meta charset="utf-8">
 <title>${escapeHtml(title)}</title><style>${STYLE}</style></head><body>
 <header>
   <img src="${LOGO_PROLOCO_DATA_URI}" alt="${ASSOCIATION.name}" />
@@ -310,7 +322,7 @@ const page = (title: string, body: string) => `<!doctype html><html lang="it"><h
 ${body}
 </body></html>`;
 
-const timeOrBlank = (t: string | null | undefined) =>
+export const timeOrBlank = (t: string | null | undefined) =>
   t ? `<span class="v">${shortTime(t)}</span>` : fill('', 16);
 
 function eventDates(c: ContractData) {

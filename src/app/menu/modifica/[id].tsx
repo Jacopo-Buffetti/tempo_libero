@@ -26,12 +26,17 @@ import {
 import { centsToInput, errorMessage, parseEuro } from '@/lib/spesa';
 import { DateTimeField } from '@/components/DateTimeField';
 import { PriceModeField } from '@/components/PriceModeField';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/menu/modifica';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/menu/modifica';
+import { useRole } from '@/lib/ruoli';
 
 export default function ModificaMenu() {
+  const styles = useStyles();
+  const { isConsigliere, userId } = useRole();
+  const { colors, type } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const event = useEvent(id);
+  const canDelete = isConsigliere || (!!userId && event.data?.created_by === userId);
   const e = event.data;
 
   const update = useUpdateEvent(id);
@@ -231,25 +236,29 @@ export default function ModificaMenu() {
 
           {error && <Text style={styles.error}>{error}</Text>}
 
-          <View style={styles.danger}>
-            <Pressable
-              onPress={confirmDelete}
-              disabled={remove.isPending}
-              style={({ pressed }) => [styles.deleteButton, pressed && { opacity: 0.85 }]}
-            >
-              {remove.isPending ? (
-                <ActivityIndicator color={colors.warn} />
-              ) : (
-                <>
-                  <Ionicons name="trash-outline" size={18} color={colors.warn} />
-                  <Text style={styles.deleteText}>Elimina l’evento</Text>
-                </>
-              )}
-            </Pressable>
-            <Text style={[type.caption, styles.center]}>
-              Può eliminarlo chi l’ha creato o un amministratore.
-            </Text>
-          </View>
+          {canDelete ? (
+            <View style={styles.danger}>
+              <Pressable
+                onPress={confirmDelete}
+                disabled={remove.isPending}
+                style={({ pressed }) => [styles.deleteButton, pressed && { opacity: 0.85 }]}
+              >
+                {remove.isPending ? (
+                  <ActivityIndicator color={colors.warn} />
+                ) : (
+                  <>
+                    <Ionicons name="trash-outline" size={18} color={colors.warn} />
+                    <Text style={styles.deleteText}>Elimina l’evento</Text>
+                  </>
+                )}
+              </Pressable>
+              <Text style={[type.caption, styles.center]}>
+                Può eliminarlo chi l’ha creato o un amministratore.
+              </Text>
+            </View>
+          ) : (
+            <Text style={[type.caption, styles.center]}>Puoi eliminare solo i menù creati da te.</Text>
+          )}
         </ScrollView>
 
         <View style={styles.footer}>

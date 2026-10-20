@@ -18,6 +18,7 @@ import {
   contractDefaults,
   contractHtml,
   printHtml,
+  roomClientPatch,
   sharePdf,
   useContract,
   useSaveContract,
@@ -29,12 +30,14 @@ import { Chip } from '@/components/Chip';
 import { DateTimeField } from '@/components/DateTimeField';
 import { TimeField } from '@/components/TimeField';
 import { Field, MoneyField, Section } from '@/components/FormField';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/contratto';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/contratto';
 
 const TAX_CODE = /^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/;
 
 export default function Contratto() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const { rentalId } = useLocalSearchParams<{ rentalId: string }>();
   const rental = useRental(rentalId);
   const client = useClient(rental.data?.client_id);
@@ -85,7 +88,12 @@ export default function Contratto() {
     setError(null);
     setBusy(kind);
     try {
-      await save.mutateAsync({ id: record.data.id, contract: data, clientId: rental.data?.client_id });
+      await save.mutateAsync({
+        id: record.data.id,
+        contract: data,
+        clientId: rental.data?.client_id,
+        clientPatch: roomClientPatch(data),
+      });
       const html = contractHtml(data, record.data.number);
       const name = `Accordo ${record.data.number} ${data.firstName} ${data.lastName}`;
       if (kind === 'pdf') await sharePdf(html, name);
@@ -101,7 +109,12 @@ export default function Contratto() {
     if (!data || !record.data) return;
     setError(null);
     try {
-      await save.mutateAsync({ id: record.data.id, contract: data, clientId: rental.data?.client_id });
+      await save.mutateAsync({
+        id: record.data.id,
+        contract: data,
+        clientId: rental.data?.client_id,
+        clientPatch: roomClientPatch(data),
+      });
       router.back();
     } catch (e) {
       setError(errorMessage(e, 'Salvataggio non riuscito. Riprova.'));

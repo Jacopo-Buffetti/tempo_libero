@@ -1,6 +1,6 @@
 import { Pressable, Text } from 'react-native';
-import { colors } from '@/theme/tokens';
-import { styles } from '@/styles/components/chip';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/components/chip';
 
 type Props = {
   label: string;
@@ -10,7 +10,10 @@ type Props = {
 };
 
 export function Chip({ label, active = false, onPress, variant = 'dark' }: Props) {
-  const activeBg = variant === 'dark' ? colors.text : colors.accent;
+  const styles = useStyles();
+  const { colors } = useTheme();
+  const activeBg = variant === 'dark' ? colors.inverse : colors.accent;
+  const activeText = variant === 'dark' ? colors.inverseText : colors.onAccent;
 
   return (
     <Pressable
@@ -24,7 +27,7 @@ export function Chip({ label, active = false, onPress, variant = 'dark' }: Props
         pressed && !active && styles.pressed,
       ]}
     >
-      <Text style={[styles.label, active && styles.labelActive]}>{label}</Text>
+      <Text style={[styles.label, active && { color: activeText }]}>{label}</Text>
     </Pressable>
   );
 }

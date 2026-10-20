@@ -1,8 +1,8 @@
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WEEKDAYS, addMonths, dateOf, monthGrid, monthTitle, todayIso } from '@/lib/calendario';
-import { colors } from '@/theme/tokens';
-import { styles } from '@/styles/components/monthGrid';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/components/monthGrid';
 
 export type DayInfo = {
   label?: string;
@@ -20,6 +20,8 @@ type Props = {
 };
 
 export function MonthGrid({ month, onMonthChange, selected, onSelect, info }: Props) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const days = monthGrid(month);
   const today = todayIso();
 

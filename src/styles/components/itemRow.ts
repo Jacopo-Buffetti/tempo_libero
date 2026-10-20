@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -50,4 +49,4 @@ export const styles = StyleSheet.create({
   stepText: { fontFamily: font.bold, fontSize: 20, color: colors.text },
   qty: { minWidth: 44, alignItems: 'center' },
   unit: { fontFamily: font.medium, fontSize: 11, color: colors.muted },
-});
+}));

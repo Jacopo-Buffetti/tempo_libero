@@ -5,8 +5,8 @@ import DateTimePicker, {
 } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { localIsoDate, shortTime } from '@/lib/menu';
-import { colors } from '@/theme/tokens';
-import { styles } from '@/styles/components/dateTimeField';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/components/dateTimeField';
 
 type Props = {
   date: string | null;
@@ -28,6 +28,8 @@ export function DateTimeField({
   withTime = true,
   label,
 }: Props) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const value = new Date(`${date ?? localIsoDate()}T${time ?? '18:00:00'}`);
 
   const dateLabel = date

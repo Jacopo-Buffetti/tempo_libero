@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: space(5), paddingTop: space(3), gap: space(4) },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: space(2) },
@@ -25,4 +24,4 @@ export const styles = StyleSheet.create({
   list: { padding: space(5), paddingBottom: space(10) },
   count: { marginBottom: space(2) },
   hint: { textAlign: 'center', marginTop: space(10), paddingHorizontal: space(8) },
-});
+}));

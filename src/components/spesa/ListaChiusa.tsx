@@ -15,13 +15,15 @@ import {
 import { useAuth, useMembership } from '@/providers/AuthProvider';
 import { closedListText, shareAnywhere, shareOnWhatsApp } from '@/lib/condividiLista';
 import { RunCard } from '@/components/spesa/RunCard';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/components/listaChiusa';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/components/listaChiusa';
 
 const shortDate = (iso: string) =>
   dateFromIso(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
 
 export function ListaChiusa({ list }: { list: ListSummary }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const { session } = useAuth();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
@@ -37,7 +39,7 @@ export function ListaChiusa({ list }: { list: ListSummary }) {
   const toRefund = runList
     .filter((r) => r.paid_by === 'volontario' && !r.reimbursed)
     .reduce((sum, r) => sum + r.total_cents, 0);
-  const warnings = runList.reduce((sum, r) => sum + r.receipts_missing + r.prices_missing, 0);
+  const warnings = runList.filter((r) => r.amount_missing).length;
 
   const first = runList[0]?.run_date;
   const last = runList[runList.length - 1]?.run_date;
@@ -53,7 +55,7 @@ export function ListaChiusa({ list }: { list: ListSummary }) {
       { name: list.name!, locations: listLocations(list) },
       runList.map((run) => ({
         run,
-        payer: payerLabel(run.paid_by, run.paid_by_user),
+        payer: payerLabel(run),
         items: bought.filter((i) => i.run_id === run.id),
       })),
     );
@@ -108,10 +110,12 @@ export function ListaChiusa({ list }: { list: ListSummary }) {
           <View style={styles.totalCard}>
             <View style={styles.flex}>
               <Text style={type.label}>
-                Totale · {runList.length} {runList.length === 1 ? 'spesa' : 'spese'}
+                Totale · {runList.length} {runList.length === 1 ? 'pagamento' : 'pagamenti'}
               </Text>
               {warnings > 0 && (
-                <Text style={[type.caption, styles.warnText]}>Alcuni importi da completare</Text>
+                <Text style={[type.caption, styles.warnText]}>
+                  {warnings === 1 ? '1 importo da inserire' : `${warnings} importi da inserire`}
+                </Text>
               )}
               {toRefund > 0 && (
                 <Text style={[type.caption, styles.warnText]}>Da rimborsare: {formatEuro(toRefund)}</Text>
@@ -129,7 +133,7 @@ export function ListaChiusa({ list }: { list: ListSummary }) {
                 listId={listId}
                 orgId={orgId}
                 items={bought.filter((i) => i.run_id === run.id)}
-                payerName={payerLabel(run.paid_by, run.paid_by_user)}
+                payerName={payerLabel(run)}
                 initiallyOpen={runList.length === 1}
               />
             ))}

@@ -86,18 +86,18 @@ export function closedListText(
   const toRefund = runs
     .filter((r) => r.run.paid_by === 'volontario' && !r.run.reimbursed)
     .reduce((sum, r) => sum + r.run.total_cents, 0);
-  const missing = runs.reduce((sum, r) => sum + r.run.receipts_missing + r.run.prices_missing, 0);
+  const missing = runs.filter((r) => r.run.amount_missing).length;
 
   const parts = [
     '🧾 *RESOCONTO SPESA*',
     `*${list.name.trim()}*`,
-    `📍 ${locationsLabel(list.locations)}   🛍️ ${runs.length} ${runs.length === 1 ? 'spesa' : 'spese'}`,
+    `📍 ${locationsLabel(list.locations)}   🛍️ ${runs.length} ${runs.length === 1 ? 'pagamento' : 'pagamenti'}`,
     RULE,
   ];
 
   runs.forEach(({ run, payer, items }, index) => {
     const head = [`*${index + 1} · ${longDate(run.run_date)}*`, run.shop].filter(Boolean).join(' · ');
-    parts.push('', `${head} — *${formatEuro(run.total_cents)}*`);
+    parts.push('', `${head} — *${run.amount_missing ? 'importo da inserire' : formatEuro(run.total_cents)}*`);
     if (items.length) {
       parts.push(
         '```',
@@ -114,7 +114,7 @@ export function closedListText(
       ? ` · ${run.receipts_count} ${run.receipts_count === 1 ? 'scontrino' : 'scontrini'}`
       : '';
     const refund =
-      run.paid_by === 'volontario' ? (run.reimbursed ? ' · rimborsata' : ' · da rimborsare') : '';
+      run.paid_by === 'volontario' ? (run.reimbursed ? ' · rimborsato' : ' · da rimborsare') : '';
     parts.push(`👤 ${payer}${refund}${receipts}`);
   });
 

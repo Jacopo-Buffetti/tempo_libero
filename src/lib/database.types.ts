@@ -286,21 +286,27 @@ export type Database = {
       members: {
         Row: {
           created_at: string
+          created_by: string | null
           display_name: string | null
+          email: string | null
           org_id: string
           role: Database["public"]["Enums"]["member_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           display_name?: string | null
+          email?: string | null
           org_id: string
           role?: Database["public"]["Enums"]["member_role"]
           user_id: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           display_name?: string | null
+          email?: string | null
           org_id?: string
           role?: Database["public"]["Enums"]["member_role"]
           user_id?: string
@@ -383,6 +389,38 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      payers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          org_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          org_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rental_contracts: {
         Row: {
@@ -516,6 +554,7 @@ export type Database = {
           nickname: string | null
           org_id: string
           position: number
+          user_id: string | null
         }
         Insert: {
           active?: boolean
@@ -525,6 +564,7 @@ export type Database = {
           nickname?: string | null
           org_id: string
           position?: number
+          user_id?: string | null
         }
         Update: {
           active?: boolean
@@ -534,6 +574,7 @@ export type Database = {
           nickname?: string | null
           org_id?: string
           position?: number
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -687,6 +728,8 @@ export type Database = {
           name: string
           org_id: string
           paid_by: Database["public"]["Enums"]["payment_source"] | null
+          paid_by_name: string | null
+          paid_by_person: string | null
           paid_by_user: string | null
           reimbursed: boolean
           shop: string | null
@@ -704,6 +747,8 @@ export type Database = {
           name: string
           org_id: string
           paid_by?: Database["public"]["Enums"]["payment_source"] | null
+          paid_by_name?: string | null
+          paid_by_person?: string | null
           paid_by_user?: string | null
           reimbursed?: boolean
           shop?: string | null
@@ -721,6 +766,8 @@ export type Database = {
           name?: string
           org_id?: string
           paid_by?: Database["public"]["Enums"]["payment_source"] | null
+          paid_by_name?: string | null
+          paid_by_person?: string | null
           paid_by_user?: string | null
           reimbursed?: boolean
           shop?: string | null
@@ -819,38 +866,53 @@ export type Database = {
       }
       shopping_runs: {
         Row: {
+          amount_cents: number | null
           created_at: string
           created_by: string | null
           id: string
           list_id: string
           org_id: string
           paid_by: Database["public"]["Enums"]["payment_source"]
+          paid_by_name: string | null
+          paid_by_person: string | null
           paid_by_user: string | null
+          payer_id: string | null
           reimbursed: boolean
+          reimbursed_on: string | null
           run_date: string
           shop: string | null
         }
         Insert: {
+          amount_cents?: number | null
           created_at?: string
           created_by?: string | null
           id?: string
           list_id: string
           org_id: string
           paid_by?: Database["public"]["Enums"]["payment_source"]
+          paid_by_name?: string | null
+          paid_by_person?: string | null
           paid_by_user?: string | null
+          payer_id?: string | null
           reimbursed?: boolean
+          reimbursed_on?: string | null
           run_date?: string
           shop?: string | null
         }
         Update: {
+          amount_cents?: number | null
           created_at?: string
           created_by?: string | null
           id?: string
           list_id?: string
           org_id?: string
           paid_by?: Database["public"]["Enums"]["payment_source"]
+          paid_by_name?: string | null
+          paid_by_person?: string | null
           paid_by_user?: string | null
+          payer_id?: string | null
           reimbursed?: boolean
+          reimbursed_on?: string | null
           run_date?: string
           shop?: string | null
         }
@@ -882,10 +944,12 @@ export type Database = {
     Views: {
       shopping_list_summary: {
         Row: {
+          amounts_missing: number | null
           checked_count: number | null
           closed_at: string | null
           closed_on: string | null
           created_at: string | null
+          created_by: string | null
           event_id: string | null
           id: string | null
           items_count: number | null
@@ -948,13 +1012,19 @@ export type Database = {
         Returns: number
       }
       close_shopping_list: {
+        Args: { p_carry_over?: boolean; p_list_id: string }
+        Returns: string
+      }
+      create_payment: {
         Args: {
-          p_carry_over?: boolean
-          p_closed_on: string
+          p_amount_cents: number | null
+          p_item_ids: string[]
           p_list_id: string
-          p_paid_by: Database["public"]["Enums"]["payment_source"]
-          p_prices: Json
-          p_shop: string
+          p_paid_on: string | null
+          p_payer_kind: string
+          p_payer_name: string | null
+          p_payer_ref: string | null
+          p_shop: string | null
         }
         Returns: string
       }
@@ -979,6 +1049,7 @@ export type Database = {
         Returns: string
       }
       delete_dish: { Args: { p_dish_id: string }; Returns: undefined }
+      delete_payment: { Args: { p_id: string }; Returns: undefined }
       delete_shopping_list: {
         Args: { p_list_id: string; p_revert?: boolean }
         Returns: undefined
@@ -987,25 +1058,29 @@ export type Database = {
       ensure_rental_contract: { Args: { p_rental_id: string }; Returns: string }
       import_items: { Args: { p_org_id: string; p_rows: Json }; Returns: Json }
       is_admin: { Args: { p_org: string }; Returns: boolean }
+      is_consigliere: { Args: { p_org: string }; Returns: boolean }
       is_member: { Args: { p_org: string }; Returns: boolean }
       list_open_in_org: {
         Args: { p_list: string; p_org: string }
         Returns: boolean
       }
-      register_shopping_run: {
-        Args: {
-          p_list_id: string
-          p_paid_by: Database["public"]["Enums"]["payment_source"]
-          p_prices: Json
-          p_run_date: string
-          p_shop: string
-        }
-        Returns: string
+      payer_options: {
+        Args: { p_org: string }
+        Returns: {
+          id: string
+          kind: string
+          name: string
+          user_id: string | null
+        }[]
       }
       run_total: { Args: { p_run_id: string }; Returns: number }
       set_dish_ingredient_qty: {
         Args: { p_id: string; p_qty: number }
         Returns: undefined
+      }
+      set_payments_reimbursed: {
+        Args: { p_ids: string[]; p_value: boolean }
+        Returns: number
       }
       set_list_item_checked: {
         Args: { p_checked: boolean; p_id: string }
@@ -1015,14 +1090,28 @@ export type Database = {
         Args: { p_first: string; p_second: string }
         Returns: undefined
       }
+      update_payment: {
+        Args: {
+          p_amount_cents: number | null
+          p_id: string
+          p_item_ids: string[] | null
+          p_paid_on: string | null
+          p_payer_kind: string
+          p_payer_name: string | null
+          p_payer_ref: string | null
+          p_shop: string | null
+        }
+        Returns: undefined
+      }
       unit_factor: { Args: { p_unit: string }; Returns: number }
       unit_family: { Args: { p_unit: string }; Returns: string }
+      user_id_by_email: { Args: { p_email: string }; Returns: string }
     }
     Enums: {
       item_kind: "consumabile" | "attrezzatura"
       item_location: "magazzino" | "cucina" | "bar"
       list_status: "aperta" | "chiusa"
-      member_role: "admin" | "volontario"
+      member_role: "admin" | "volontario" | "consigliere"
       menu_price_mode: "per_piatto" | "fisso"
       payment_source: "cassa" | "volontario"
       rental_space: "stanza" | "cramaccioli"
@@ -1156,7 +1245,7 @@ export const Constants = {
       item_kind: ["consumabile", "attrezzatura"],
       item_location: ["magazzino", "cucina", "bar"],
       list_status: ["aperta", "chiusa"],
-      member_role: ["admin", "volontario"],
+      member_role: ["admin", "volontario", "consigliere"],
       menu_price_mode: ["per_piatto", "fisso"],
       payment_source: ["cassa", "volontario"],
       rental_space: ["stanza", "cramaccioli"],

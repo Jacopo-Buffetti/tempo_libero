@@ -7,13 +7,15 @@ import { type Location } from '@/lib/items';
 import { errorMessage, locationsLabel, useCreateList, useLowStock } from '@/lib/spesa';
 import { LocationPicker } from '@/components/LocationPicker';
 import { useMembership } from '@/providers/AuthProvider';
-import { colors, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/spesa/nuova';
+import { useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/spesa/nuova';
 
 const defaultName = (locations: Location[]) =>
   `Spesa ${locationsLabel(locations)} ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}`;
 
 export default function NuovaLista() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
 

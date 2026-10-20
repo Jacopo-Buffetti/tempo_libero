@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   wrap: { gap: space(2.5) },
   flex: { flex: 1 },
   segment: {
@@ -61,4 +60,4 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
   },
-});
+}));

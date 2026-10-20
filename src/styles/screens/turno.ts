@@ -1,7 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { colors, font, radius, space, touch } from '@/theme/tokens';
+import { font, radius, space, themed, touch } from '@/theme/tokens';
 
-export const styles = StyleSheet.create({
+export const useStyles = themed((colors) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   topBar: {
@@ -58,4 +57,4 @@ export const styles = StyleSheet.create({
   dateWeek: { fontFamily: font.bold, fontSize: 10, color: colors.muted, textTransform: 'uppercase' },
   empty: { padding: space(4) },
   error: { fontFamily: font.bold, fontSize: 14, color: colors.warn },
-});
+}));

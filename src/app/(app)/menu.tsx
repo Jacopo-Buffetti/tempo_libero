@@ -12,15 +12,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { supabase } from '@/lib/supabase';
 import { fixedPriceLine, formatEventDate, localIsoDate, posterUrl, useEvents } from '@/lib/menu';
 import { useMembership } from '@/providers/AuthProvider';
-import { colors, space, type } from '@/theme/tokens';
-import { styles } from '@/styles/screens/elencoMenu';
+import { space, useTheme } from '@/theme/tokens';
+import { useStyles } from '@/styles/screens/elencoMenu';
 
 type EventItem = NonNullable<ReturnType<typeof useEvents>['data']>[number];
 
 export default function Menu() {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
   const events = useEvents(orgId);
@@ -117,16 +118,14 @@ export default function Menu() {
             ))}
           </View>
         )}
-
-        <Pressable onPress={() => supabase.auth.signOut()} style={styles.logout}>
-          <Text style={styles.logoutText}>Esci dall’account</Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 function Poster({ path, style }: { path: string | null; style: object }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const url = posterUrl(path);
   return url ? (
     <Image source={{ uri: url }} style={style} contentFit="cover" transition={150} />
@@ -138,6 +137,8 @@ function Poster({ path, style }: { path: string | null; style: object }) {
 }
 
 function UpcomingCard({ event, onPress }: { event: EventItem; onPress: () => void }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -170,6 +171,8 @@ function PastTile({
   onPress: () => void;
   onDuplicate: () => void;
 }) {
+  const styles = useStyles();
+  const { colors, type } = useTheme();
   const d = new Date(`${event.starts_on}T12:00:00`);
   return (
     <Pressable
