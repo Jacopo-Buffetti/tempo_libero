@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { dayTitle, monthOf, monthRange, todayIso } from '@/lib/calendario';
+import { dayTitle, monthOf, monthRange, monthTitle, todayIso } from '@/lib/calendario';
 import {
   isClosedDay,
   isHardDay,
@@ -235,14 +235,15 @@ export default function Calendario() {
             </View>
 
             {visibleRentals.length > 0 && (
-              <View style={styles.dayCard}>
-                <View style={styles.dayHead}>
-                  <Text style={type.label}>Affitti del mese · {visibleRentals.length}</Text>
-                  {monthDue > 0 && <Text style={styles.due}>Da incassare {formatEuro(monthDue)}</Text>}
-                </View>
-                {visibleRentals.map((r) => (
-                  <RentalRow key={r.id} rental={r} withDate />
-                ))}
+              <View style={[styles.dayCard, styles.dayHead]}>
+                <Text style={type.label}>
+                  {monthTitle(month)} · {visibleRentals.length} {visibleRentals.length === 1 ? 'affitto' : 'affitti'}
+                </Text>
+                {monthDue > 0 ? (
+                  <Text style={styles.due}>Da incassare {formatEuro(monthDue)}</Text>
+                ) : (
+                  <Text style={type.caption}>Tutto incassato</Text>
+                )}
               </View>
             )}
           </>
@@ -252,7 +253,7 @@ export default function Calendario() {
   );
 }
 
-function RentalRow({ rental, withDate }: { rental: Rental; withDate?: boolean }) {
+function RentalRow({ rental }: { rental: Rental }) {
   const styles = useStyles();
   const { colors, type } = useTheme();
   const pay = paymentState(rental);
@@ -268,7 +269,7 @@ function RentalRow({ rental, withDate }: { rental: Rental; withDate?: boolean })
         </Text>
         <Text style={type.caption} numberOfLines={1}>
           {spaceShort(rental.space)} ·{' '}
-          {withDate || rental.rent_date !== rental.end_date ? periodLabel(rental) : timeRange(rental)}
+          {rental.rent_date !== rental.end_date ? periodLabel(rental) : timeRange(rental)}
         </Text>
         <Text style={[styles.payment, pay.warn && styles.paymentWarn]}>{pay.label}</Text>
       </View>

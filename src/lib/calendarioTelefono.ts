@@ -12,13 +12,17 @@ const DAYS_AHEAD = 120;
 
 export type CalendarPermission = 'concesso' | 'negato' | 'da-chiedere';
 
+const supported = Platform.OS !== 'web';
+
 export async function calendarPermission(): Promise<CalendarPermission> {
+  if (!supported) return 'negato';
   const status = await Calendar.getCalendarPermissionsAsync();
   if (status.granted) return 'concesso';
   return status.canAskAgain ? 'da-chiedere' : 'negato';
 }
 
 export async function askCalendarPermission(): Promise<CalendarPermission> {
+  if (!supported) return 'negato';
   const status = await Calendar.requestCalendarPermissionsAsync();
   if (status.granted) return 'concesso';
   return status.canAskAgain ? 'da-chiedere' : 'negato';
@@ -61,6 +65,7 @@ const utcMidnight = (iso: string) => {
 };
 
 export async function syncShiftsToCalendar(orgId: string, personId: string) {
+  if (!supported) return null;
   if ((await calendarPermission()) !== 'concesso') return null;
   const calendarId = await ensureCalendar();
 
@@ -100,6 +105,7 @@ export async function syncShiftsToCalendar(orgId: string, personId: string) {
 }
 
 export async function removeShiftsCalendar() {
+  if (!supported) return;
   const saved = Storage.getItemSync(CALENDAR_KEY);
   if (!saved) return;
   try {

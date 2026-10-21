@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -25,15 +25,21 @@ import {
   type ContractData,
   type KitchenOption,
 } from '@/lib/contratto';
-import { errorMessage, parseEuro } from '@/lib/spesa';
+import { errorMessage } from '@/lib/spesa';
+import {
+  computeTaxCode,
+  findPlace,
+  normalizeTaxCode,
+  placeLabel,
+  taxCodeProblem,
+  type Sex,
+} from '@/lib/codiceFiscale';
 import { Chip } from '@/components/Chip';
 import { DateTimeField } from '@/components/DateTimeField';
 import { TimeField } from '@/components/TimeField';
 import { Field, MoneyField, Section } from '@/components/FormField';
 import { useTheme } from '@/theme/tokens';
 import { useStyles } from '@/styles/screens/contratto';
-
-const TAX_CODE = /^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$/;
 
 export default function Contratto() {
   const styles = useStyles();
@@ -47,12 +53,41 @@ export default function Contratto() {
   const [data, setData] = useState<ContractData | null>(null);
   const [busy, setBusy] = useState<'pdf' | 'stampa' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const autoTaxCode = useRef<string | null>(null);
 
   useEffect(() => {
     if (data || !rental.data || !record.data || client.isLoading) return;
     const base = contractDefaults(rental.data, (client.data as Record<string, string | null> | null) ?? null);
-    setData({ ...base, ...record.data.contract });
+    const merged = { ...base, ...record.data.contract };
+    setData({ ...merged, placeDate: merged.placeDate ?? merged.signedOn });
   }, [data, rental.data, record.data, client.isLoading, client.data]);
+
+  const placeMatch = useMemo(() => findPlace(data?.birthPlace ?? ''), [data?.birthPlace]);
+  const taxResult = useMemo(
+    () =>
+      data
+        ? computeTaxCode({
+            firstName: data.firstName,
+            lastName: data.lastName,
+            sex: data.sex,
+            birthDate: data.birthDate,
+            birthPlace: data.birthPlace,
+          })
+        : null,
+    [data?.firstName, data?.lastName, data?.sex, data?.birthDate, data?.birthPlace],
+  );
+  const expectedTaxCode = taxResult?.status === 'ok' ? taxResult.code : null;
+
+  useEffect(() => {
+    if (!expectedTaxCode) return;
+    setData((d) => {
+      if (!d) return d;
+      const current = normalizeTaxCode(d.taxCode);
+      if (current !== '' && current !== autoTaxCode.current && current !== expectedTaxCode) return d;
+      autoTaxCode.current = expectedTaxCode;
+      return current === expectedTaxCode ? d : { ...d, taxCode: expectedTaxCode };
+    });
+  }, [expectedTaxCode]);
 
   if (!data || !record.data || !rental.data) {
     return (
@@ -69,19 +104,34 @@ export default function Contratto() {
   const set = <K extends keyof ContractData>(key: K, value: ContractData[K]) =>
     setData((d) => (d ? { ...d, [key]: value } : d));
 
-  const taxCode = data.taxCode.trim().toUpperCase();
-  const taxWarn = taxCode && !TAX_CODE.test(taxCode) ? 'Il codice fiscale non sembra corretto' : null;
+  const taxWarn = taxCodeProblem(data.taxCode, expectedTaxCode);
+  const taxHint =
+    expectedTaxCode && normalizeTaxCode(data.taxCode) === expectedTaxCode
+      ? 'Calcolato da nome, cognome, sesso, data e luogo di nascita'
+      : taxResult?.status === 'incomplete'
+        ? `Per calcolarlo manca: ${taxResult.missing.join(', ')}`
+        : undefined;
+  const placeWarn =
+    placeMatch.status === 'ambiguous'
+      ? 'Ci sono più comuni con questo nome: scegli quello giusto'
+      : placeMatch.status === 'unknown'
+        ? placeMatch.options.length
+          ? 'Comune non trovato: è uno di questi?'
+          : 'Comune non trovato: scrivi il comune, non la frazione'
+        : null;
+  const placeHint = placeMatch.status === 'found' ? placeLabel(placeMatch.place) : undefined;
+  const placeOptions =
+    placeMatch.status === 'ambiguous' || placeMatch.status === 'unknown' ? placeMatch.options : [];
+  const chooseSex = (sex: Sex) => set('sex', data.sex === sex ? null : sex);
   const emailWarn =
     data.email.trim() && !/^\S+@\S+\.\S+$/.test(data.email.trim()) ? 'E-mail non valida' : null;
   const multiDay = !!data.eventEndDate && data.eventEndDate !== data.eventDate;
 
   function chooseOption(option: KitchenOption) {
-    setData((d) => {
-      if (!d) return d;
-      const price = option === 'con' ? d.priceKitchen : option === 'senza' ? d.priceNoKitchen : '';
-      return { ...d, option, agreedPrice: parseEuro(price) != null ? price : d.agreedPrice };
-    });
+    set('option', option);
   }
+
+  const contract = (): ContractData => ({ ...data, signedOn: data.placeDate });
 
   async function run(kind: 'pdf' | 'stampa') {
     if (!data || !record.data) return;
@@ -90,11 +140,11 @@ export default function Contratto() {
     try {
       await save.mutateAsync({
         id: record.data.id,
-        contract: data,
+        contract: contract(),
         clientId: rental.data?.client_id,
         clientPatch: roomClientPatch(data),
       });
-      const html = contractHtml(data, record.data.number);
+      const html = contractHtml(contract(), record.data.number);
       const name = `Accordo ${record.data.number} ${data.firstName} ${data.lastName}`;
       if (kind === 'pdf') await sharePdf(html, name);
       else await printHtml(html);
@@ -111,7 +161,7 @@ export default function Contratto() {
     try {
       await save.mutateAsync({
         id: record.data.id,
-        contract: data,
+        contract: contract(),
         clientId: rental.data?.client_id,
         clientPatch: roomClientPatch(data),
       });
@@ -143,16 +193,6 @@ export default function Contratto() {
             </Text>
           </View>
 
-          <Section title="Accordo">
-            <DateTimeField
-              date={data.signedOn}
-              time={null}
-              onChangeDate={(d) => set('signedOn', d)}
-              withTime={false}
-              label="Firmato il"
-            />
-          </Section>
-
           <Section title="Richiedente" hint="I dati vengono salvati anche nella rubrica clienti.">
             <View style={styles.twoCols}>
               <View style={styles.flex}>
@@ -172,12 +212,33 @@ export default function Contratto() {
                 />
               </View>
             </View>
+            <View style={styles.usage}>
+              <Text style={styles.label}>Sesso</Text>
+              <View style={styles.chips}>
+                <Chip label="Maschio" variant="accent" active={data.sex === 'M'} onPress={() => chooseSex('M')} />
+                <Chip label="Femmina" variant="accent" active={data.sex === 'F'} onPress={() => chooseSex('F')} />
+              </View>
+            </View>
             <Field
               label="Nato/a a"
               value={data.birthPlace}
               onChangeText={(v) => set('birthPlace', v)}
               autoCapitalize="words"
+              hint={placeHint}
+              warn={placeWarn}
             />
+            {placeOptions.length > 0 && (
+              <View style={styles.chips}>
+                {placeOptions.map((option) => (
+                  <Chip
+                    key={`${option.code}-${option.province}-${option.name}`}
+                    label={placeLabel(option)}
+                    variant="accent"
+                    onPress={() => set('birthPlace', placeLabel(option))}
+                  />
+                ))}
+              </View>
+            )}
             <DateTimeField
               date={data.birthDate}
               time={null}
@@ -199,6 +260,7 @@ export default function Contratto() {
               autoCorrect={false}
               maxLength={16}
               warn={taxWarn}
+              hint={taxHint}
             />
             <Field
               label="Telefono"
@@ -268,18 +330,12 @@ export default function Contratto() {
             <View style={styles.card}>
               <View style={styles.pad}>
                 <MoneyField
-                  label="Sala senza cucina"
-                  value={data.priceNoKitchen}
-                  onChangeText={(v) => set('priceNoKitchen', v)}
-                />
-                <MoneyField
-                  label="Sala con cucina"
-                  value={data.priceKitchen}
-                  onChangeText={(v) => set('priceKitchen', v)}
+                  label="Importo concordato"
+                  value={data.agreedPrice}
+                  onChangeText={(v) => set('agreedPrice', v)}
                 />
               </View>
             </View>
-            <Text style={styles.label}>Opzione scelta</Text>
             <View style={styles.chips}>
               <Chip
                 label="Senza cucina"
@@ -293,15 +349,6 @@ export default function Contratto() {
                 active={data.option === 'con'}
                 onPress={() => chooseOption(data.option === 'con' ? null : 'con')}
               />
-            </View>
-            <View style={styles.card}>
-              <View style={styles.pad}>
-                <MoneyField
-                  label="Importo concordato"
-                  value={data.agreedPrice}
-                  onChangeText={(v) => set('agreedPrice', v)}
-                />
-              </View>
             </View>
           </Section>
 

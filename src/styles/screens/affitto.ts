@@ -129,6 +129,7 @@ export const useStyles = themed((colors) => ({
   dueOk: { color: colors.ok },
 
   documents: { gap: space(2.5) },
+  subLabel: { marginTop: space(2) },
   docButton: {
     flexDirection: 'row',
     alignItems: 'center',

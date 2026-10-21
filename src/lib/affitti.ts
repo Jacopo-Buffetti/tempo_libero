@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase';
 import { escapeLike } from '@/lib/items';
 import { formatEuro } from '@/lib/spesa';
 import { dateOf, isoOf } from '@/lib/calendario';
+import { removeDocumentFiles, rentalDocumentPaths } from '@/lib/documentiAffitto';
+import { removeSignedFiles, signedFilePaths } from '@/lib/firmatiAffitto';
 
 export type Space = 'stanza' | 'cramaccioli';
 
@@ -277,8 +279,10 @@ export function useDeleteRental() {
   const invalidate = useInvalidateAffitti();
   return useMutation({
     mutationFn: async (id: string) => {
+      const [documents, signed] = await Promise.all([rentalDocumentPaths(id), signedFilePaths(id)]);
       const { error } = await supabase.from('rentals').delete().eq('id', id);
       if (error) throw error;
+      await Promise.all([removeDocumentFiles(documents), removeSignedFiles(signed)]);
     },
     onSuccess: invalidate,
   });

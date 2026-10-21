@@ -34,6 +34,7 @@ import { qtyWithUnit } from '@/lib/items';
 import { receiptsTotal, useReceipts } from '@/lib/scontrini';
 import { useAuth, useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
+import { SelectField } from '@/components/SelectField';
 import { DateTimeField } from '@/components/DateTimeField';
 import { Scontrini } from '@/components/spesa/Scontrini';
 import { useTheme } from '@/theme/tokens';
@@ -226,17 +227,13 @@ export default function Pagamento() {
             {consiglieri.length > 0 && (
               <View style={styles.group}>
                 <Text style={styles.groupLabel}>Consiglieri</Text>
-                <View style={styles.chips}>
-                  {consiglieri.map((o) => (
-                    <Chip
-                      key={o.id}
-                      label={optionLabel(o)}
-                      variant="accent"
-                      active={sameChoice(payer, o.kind, o.id)}
-                      onPress={() => choose({ kind: o.kind, ref: o.id })}
-                    />
-                  ))}
-                </View>
+                <SelectField
+                  title="Quale consigliere?"
+                  placeholder="Scegli un consigliere"
+                  options={consiglieri.map((o) => ({ key: o.id, label: optionLabel(o) }))}
+                  selectedKey={payer?.kind === 'consigliere' ? (payer.ref ?? null) : null}
+                  onSelect={(key) => choose({ kind: 'consigliere', ref: key })}
+                />
               </View>
             )}
             <View style={styles.group}>

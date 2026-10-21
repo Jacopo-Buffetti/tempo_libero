@@ -476,6 +476,105 @@ export type Database = {
           },
         ]
       }
+      rental_documents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          org_id: string
+          path: string
+          rental_id: string
+          side: string
+          size_bytes: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id: string
+          path: string
+          rental_id: string
+          side: string
+          size_bytes?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id?: string
+          path?: string
+          rental_id?: string
+          side?: string
+          size_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_documents_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_documents_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_signed_files: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          mime: string
+          org_id: string
+          path: string
+          rental_id: string
+          size_bytes: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          mime: string
+          org_id: string
+          path: string
+          rental_id: string
+          size_bytes?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          mime?: string
+          org_id?: string
+          path?: string
+          rental_id?: string
+          size_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_signed_files_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_signed_files_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rentals: {
         Row: {
           balance_paid: boolean

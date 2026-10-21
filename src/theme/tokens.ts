@@ -1,4 +1,4 @@
-import { Appearance, StyleSheet } from 'react-native';
+import { Appearance, Platform, StyleSheet } from 'react-native';
 
 export const palette = {
   pine: '#036930',
@@ -68,7 +68,7 @@ export const font = {
 
 export const touch = 44;
 
-Appearance.setColorScheme('light');
+if (Platform.OS !== 'web') Appearance.setColorScheme('light');
 
 const typeFor = (c: ThemeColors) =>
   ({

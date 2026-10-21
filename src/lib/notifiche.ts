@@ -19,6 +19,10 @@ let loaded: NativeNotifications | null | undefined;
 
 function native(): NativeNotifications | null {
   if (loaded !== undefined) return loaded;
+  if (Platform.OS === 'web') {
+    loaded = null;
+    return loaded;
+  }
   try {
     loaded = require('@/lib/notificheNative') as NativeNotifications;
     loaded.setNotificationHandler({

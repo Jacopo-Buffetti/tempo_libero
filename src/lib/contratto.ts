@@ -1,3 +1,4 @@
+import type { Sex } from '@/lib/codiceFiscale';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { File, Paths } from 'expo-file-system';
@@ -25,6 +26,7 @@ export type ContractData = {
   signedOn: string | null;
   firstName: string;
   lastName: string;
+  sex: Sex | null;
   birthPlace: string;
   birthDate: string | null;
   residence: string;
@@ -37,8 +39,6 @@ export type ContractData = {
   startTime: string | null;
   endTime: string | null;
   participants: string;
-  priceNoKitchen: string;
-  priceKitchen: string;
   option: KitchenOption;
   agreedPrice: string;
   deposit: string;
@@ -106,6 +106,7 @@ export function contractDefaults(rental: Rental, client: Record<string, string |
     signedOn: null,
     firstName: client?.first_name ?? '',
     lastName: client?.last_name ?? '',
+    sex: null,
     birthPlace: client?.birth_place ?? '',
     birthDate: client?.birth_date ?? null,
     residence: client?.address ?? '',
@@ -118,8 +119,6 @@ export function contractDefaults(rental: Rental, client: Record<string, string |
     startTime: rental.start_time,
     endTime: rental.end_time,
     participants: '',
-    priceNoKitchen: '',
-    priceKitchen: '',
     option: null,
     agreedPrice: centsText(rental.price_cents),
     deposit: '',
@@ -334,13 +333,14 @@ function eventDates(c: ContractData) {
 
 export function contractHtml(c: ContractData, number: string) {
   const fullName = [c.firstName, c.lastName].filter((x) => x.trim()).join(' ');
+  const signedOn = c.placeDate ?? c.signedOn;
   const body = `
 <h1>Accordo per l’utilizzo temporaneo<br/>della sala associativa</h1>
 <p class="subtitle">Con assunzione di responsabilità, deposito cauzionale e verbale di consegna e riconsegna</p>
 
 <div class="meta">
   <div><span>N. accordo</span><b>${escapeHtml(number)}</b></div>
-  <div><span>Data di sottoscrizione</span><b>${c.signedOn ? dateText(c.signedOn) : '____ / ____ / ______'}</b></div>
+  <div><span>Data di sottoscrizione</span><b>${signedOn ? dateText(signedOn) : '____ / ____ / ______'}</b></div>
 </div>
 
 <h2>Tra</h2>
@@ -371,14 +371,10 @@ export function contractHtml(c: ContractData, number: string) {
 
 <div class="article">
 <h2>Art. 2 – Corrispettivo per l’utilizzo</h2>
-<p>Per l’utilizzo temporaneo della sala è previsto il seguente importo, da concordare e indicare prima della sottoscrizione:</p>
-<ul>
-<li><b>Utilizzo della sala senza cucina:</b> € ${fillMoney(c.priceNoKitchen)}</li>
-<li><b>Utilizzo della sala con cucina:</b> € ${fillMoney(c.priceKitchen)}</li>
-</ul>
+<p>Per l’utilizzo temporaneo della sala le parti concordano il seguente corrispettivo:</p>
 <div class="options">
-<p><b>Opzione scelta:</b> &nbsp;${box(c.option === 'senza')}Sala senza cucina &nbsp;&nbsp; ${box(c.option === 'con')}Sala con cucina</p>
 <p><b>Importo concordato:</b> € ${fillMoney(c.agreedPrice)}</p>
+<p>${box(c.option === 'senza')}Sala senza cucina &nbsp;&nbsp; ${box(c.option === 'con')}Sala con cucina</p>
 </div>
 <p>Il corrispettivo, ove previsto, dovrà essere versato secondo le modalità indicate dall’Associazione e documentato secondo gli obblighi applicabili.</p>
 <p>L’eventuale utilizzo della cucina è consentito esclusivamente se espressamente autorizzato. Il Richiedente si impegna a utilizzare le attrezzature con diligenza, a non manomettere gli impianti e a lasciare i locali e le attrezzature puliti e in ordine.</p>
@@ -459,7 +455,7 @@ export function contractHtml(c: ContractData, number: string) {
 </div>
 
 <div style="break-inside: avoid">
-<p class="place"><b>Luogo e data:</b> ${fill([c.place, c.placeDate ? dateText(c.placeDate) : ''].filter(Boolean).join(', '), 100)}</p>
+<p class="place"><b>Luogo e data:</b> ${fill([c.place, signedOn ? dateText(signedOn) : ''].filter(Boolean).join(', '), 100)}</p>
 <div class="signs">
   ${signatureBlock('Il Richiedente', fullName, false)}
   ${signatureBlock(

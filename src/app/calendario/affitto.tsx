@@ -36,6 +36,8 @@ import { useMembership } from '@/providers/AuthProvider';
 import { Chip } from '@/components/Chip';
 import { DateTimeField } from '@/components/DateTimeField';
 import { TimeField } from '@/components/TimeField';
+import { DocumentoCliente } from '@/components/affitti/DocumentoCliente';
+import { FirmatiAffitto } from '@/components/affitti/FirmatiAffitto';
 import { useTheme } from '@/theme/tokens';
 import { useStyles } from '@/styles/screens/affitto';
 
@@ -440,6 +442,17 @@ export default function Affitto() {
             />
           </View>
 
+          <View style={styles.field}>
+            {isEdit ? (
+              <DocumentoCliente orgId={orgId} rentalId={params.id!} />
+            ) : (
+              <>
+                <Text style={type.label}>Documento d’identità</Text>
+                <Text style={type.caption}>Dopo aver salvato l’affitto potrai fotografare il documento del cliente.</Text>
+              </>
+            )}
+          </View>
+
           {isEdit && space === 'cramaccioli' && (
             <View style={styles.documents}>
               <Text style={type.label}>Documenti</Text>
@@ -458,6 +471,12 @@ export default function Affitto() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.muted} />
               </Pressable>
+              <Text style={[type.label, styles.subLabel]}>Firmati</Text>
+              <FirmatiAffitto
+                orgId={orgId}
+                rentalId={params.id!}
+                kinds={[{ kind: 'contratto', label: 'Contratto del Parco firmato' }]}
+              />
             </View>
           )}
 
@@ -490,6 +509,15 @@ export default function Affitto() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.muted} />
               </Pressable>
+              <Text style={[type.label, styles.subLabel]}>Firmati</Text>
+              <FirmatiAffitto
+                orgId={orgId}
+                rentalId={params.id!}
+                kinds={[
+                  { kind: 'contratto', label: 'Contratto firmato' },
+                  { kind: 'verbale', label: 'Verbale firmato' },
+                ]}
+              />
             </View>
           )}
 
