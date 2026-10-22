@@ -11,6 +11,7 @@ import { formatEuro, parseEuro } from '@/lib/spesa';
 import { shortTime, type Rental } from '@/lib/affitti';
 import { LOGO_PROLOCO_DATA_URI } from '@/lib/logoProloco';
 import { FIRMA_PRESIDENTE_DATA_URI } from '@/lib/firmaPresidente';
+import { TIMBRO_PROLOCO_DATA_URI } from '@/lib/timbroProloco';
 import { palette } from '@/theme/tokens';
 
 export const ASSOCIATION = {
@@ -243,11 +244,17 @@ export const fillMoney = (value: string, width = 24) => {
 export const box = (checked: boolean) =>
   `<span class="box${checked ? ' on' : ''}">${checked ? '✓' : ''}</span>`;
 
+const signatureWithStamp = `
+      <div class="sign-stack">
+        <img class="sign-stamp" src="${TIMBRO_PROLOCO_DATA_URI}" alt="Timbro" />
+        <img class="sign-img" src="${FIRMA_PRESIDENTE_DATA_URI}" alt="Firma" />
+      </div>`;
+
 export const signatureBlock = (title: string, name: string, signature: boolean) => `
   <div class="sign">
     <div class="sign-title">${title}</div>
     ${name ? `<div class="sign-name">${escapeHtml(name)}</div>` : ''}
-    <div class="sign-area">${signature ? `<img src="${FIRMA_PRESIDENTE_DATA_URI}" alt="Firma" />` : ''}</div>
+    <div class="sign-area">${signature ? signatureWithStamp : ''}</div>
     <div class="sign-line">Firma</div>
   </div>`;
 
@@ -289,8 +296,10 @@ const STYLE = `
   .signs { align-items: flex-end; }
   .sign-title { font-size: 8.5pt; text-transform: uppercase; letter-spacing: 1px; color: ${palette.stone}; min-height: 7mm; display: flex; align-items: flex-end; }
   .sign-name { font-size: 10pt; font-weight: 700; margin-top: 1mm; }
-  .sign-area { height: 17mm; display: flex; align-items: flex-end; justify-content: center; }
-  .sign-area img { max-height: 17mm; max-width: 68mm; margin-bottom: -2mm; }
+  .sign-area { height: 20mm; display: flex; align-items: flex-end; justify-content: center; }
+  .sign-stack { position: relative; width: 62mm; height: 20mm; }
+  .sign-stamp { position: absolute; left: 50%; top: 0; width: 34mm; opacity: .7; transform: translateX(-38%) rotate(-4deg); }
+  .sign-img { position: absolute; left: 50%; bottom: -2mm; max-height: 17mm; max-width: 60mm; transform: translateX(-50%); }
   .sign-line { border-top: .3mm solid ${palette.ink}; padding-top: 1mm; font-size: 8pt; color: ${palette.stone}; text-align: center; }
   .place { margin-top: 6mm; }
   .approval { display: flex; align-items: flex-end; gap: 3mm; margin-top: 7mm; font-family: 'Helvetica Neue', Arial, sans-serif;
