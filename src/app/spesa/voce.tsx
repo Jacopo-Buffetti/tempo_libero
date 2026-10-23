@@ -58,6 +58,7 @@ export default function VoceLista() {
     itemId?: string;
     dishId?: string;
     dishName?: string;
+    canCreate?: string;
   }>();
   const membership = useMembership();
   const orgId = membership.data?.org_id;
@@ -83,7 +84,17 @@ export default function VoceLista() {
     },
   });
 
-  const mode: Mode = isEdit ? (existing?.item_id ? 'inventory' : 'list-only') : (params.mode ?? 'list-only');
+  const canCreate = !isEdit && params.mode !== 'inventory' && params.canCreate === '1';
+  const [alsoInventory, setAlsoInventory] = useState(params.mode === 'new-product');
+  const mode: Mode = isEdit
+    ? existing?.item_id
+      ? 'inventory'
+      : 'list-only'
+    : params.mode === 'inventory'
+      ? 'inventory'
+      : canCreate && alsoInventory
+        ? 'new-product'
+        : 'list-only';
   const linked = mode === 'inventory';
 
   const [name, setName] = useState(params.name ?? '');
@@ -220,10 +231,49 @@ export default function VoceLista() {
               </Text>
             </View>
           )}
-          <View style={styles.destination}>
-            <Ionicons name={destination.icon} size={18} color={colors.accent} />
-            <Text style={styles.destinationText}>{destination.text}</Text>
-          </View>
+          {canCreate ? (
+            <View style={styles.field}>
+              <Text style={type.label}>Inventario</Text>
+              <View style={styles.choices}>
+                {(
+                  [
+                    {
+                      value: false,
+                      icon: 'create-outline',
+                      title: 'Solo in lista',
+                      hint: 'Non va in inventario',
+                    },
+                    {
+                      value: true,
+                      icon: 'add-circle-outline',
+                      title: 'Nuovo prodotto',
+                      hint: 'Va anche in inventario',
+                    },
+                  ] as const
+                ).map((c) => {
+                  const active = alsoInventory === c.value;
+                  return (
+                    <Pressable
+                      key={c.title}
+                      onPress={() => setAlsoInventory(c.value)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: active }}
+                      style={[styles.choice, active && styles.choiceActive]}
+                    >
+                      <Ionicons name={c.icon} size={20} color={active ? colors.accent : colors.muted} />
+                      <Text style={[styles.choiceTitle, active && styles.choiceTitleActive]}>{c.title}</Text>
+                      <Text style={type.caption}>{c.hint}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.destination}>
+              <Ionicons name={destination.icon} size={18} color={colors.accent} />
+              <Text style={styles.destinationText}>{destination.text}</Text>
+            </View>
+          )}
 
           <View style={styles.field}>
             <Text style={type.label}>Prodotto</Text>

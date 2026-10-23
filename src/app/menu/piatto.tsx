@@ -19,6 +19,7 @@ import {
   escapeLike,
   formatQty,
   locationLabel,
+  parseQty,
   roundQty,
   stepFor,
   type Location,
@@ -45,7 +46,7 @@ import { useRole } from '@/lib/ruoli';
 
 const isSection = (v: unknown): v is Section => typeof v === 'string' && SECTIONS.some((s) => s.value === v);
 
-type Mode = 'inventory' | 'new-product' | 'list-only';
+type Mode = 'inventory' | 'list-only';
 
 export default function Piatto() {
   const styles = useStyles();
@@ -153,6 +154,7 @@ export default function Piatto() {
           dishId: id,
           dishName: cleanName,
           ...(itemId ? { itemId } : {}),
+          ...(mode === 'list-only' && isConsigliere && !exactExists ? { canCreate: '1' } : {}),
         },
       });
     } catch (e) {
@@ -272,7 +274,8 @@ export default function Piatto() {
             </View>
             <Text style={type.caption}>
               Finiscono subito nella lista della spesa di “{event.data?.name}”. Se un ingrediente con lo
-              stesso nome c’è già (anche per un altro piatto), le quantità si sommano.
+              stesso nome c’è già (anche per un altro piatto), le quantità si sommano. Tocca un ingrediente
+              per scrivere la quantità esatta.
             </Text>
 
             {list.length > 0 && (
@@ -326,20 +329,11 @@ export default function Piatto() {
                     onPress={() => addIngredient('inventory', s.name, s.id)}
                   />
                 ))}
-                {!exactExists && isConsigliere && (
-                  <Option
-                    icon="add-circle-outline"
-                    color={colors.accent}
-                    title={`Nuovo prodotto: “${cleanTerm}”`}
-                    hint="anche in Cucina"
-                    onPress={() => addIngredient('new-product', cleanTerm)}
-                  />
-                )}
                 <Option
-                  icon="create-outline"
-                  color={colors.muted}
-                  title={`Solo in lista: “${cleanTerm}”`}
-                  hint="non va in inventario"
+                  icon="add-circle-outline"
+                  color={colors.accent}
+                  title={`Aggiungi “${cleanTerm}”`}
+                  hint="nuova voce"
                   onPress={() => addIngredient('list-only', cleanTerm)}
                 />
               </View>
@@ -391,6 +385,9 @@ function IngredientRow({
 }) {
   const styles = useStyles();
   const { colors, type } = useTheme();
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
+  const [bad, setBad] = useState(false);
   const line = ing.shopping_list_items;
   if (!line) return null;
   const step = stepFor(line.unit);
@@ -399,53 +396,122 @@ function IngredientRow({
     ? `Va in inventario · ${locationLabel((line.items?.location ?? 'cucina') as Location)}`
     : 'Solo in lista';
 
+  function startEdit() {
+    if (line?.checked) return;
+    setText(formatQty(ing.qty));
+    setBad(false);
+    setEditing(true);
+  }
+
+  function confirmEdit() {
+    const value = parseQty(text, line!.unit);
+    if (value == null) {
+      setBad(true);
+      return;
+    }
+    setEditing(false);
+    if (value === 0) {
+      onRemove();
+      return;
+    }
+    if (value !== roundQty(ing.qty)) onChange(value);
+  }
+
   return (
-    <View style={[styles.ingRow, !isLast && styles.divider]}>
-      <Ionicons
-        name={line.checked ? 'checkmark-circle' : line.item_id ? 'cube-outline' : 'create-outline'}
-        size={20}
-        color={line.checked ? colors.ok : line.item_id ? colors.accent : colors.muted}
-      />
-      <View style={styles.flex}>
-        <Text style={[type.body, line.checked && styles.done]}>{line.name}</Text>
-        <Text style={type.caption}>
-          {line.checked ? 'Già comprato' : where}
-          {line.note ? ` · ${line.note}` : ''}
-        </Text>
-        {shared && (
-          <Text style={styles.shared}>
-            In lista {qtyWithUnit(line.qty, line.unit)} in tutto, serve anche ad altri piatti
-          </Text>
+    <View style={[styles.ingWrap, !isLast && styles.divider]}>
+      <View style={styles.ingRow}>
+        <Pressable
+          onPress={startEdit}
+          disabled={line.checked}
+          accessibilityRole="button"
+          accessibilityLabel={`Modifica la quantità di ${line.name}`}
+          style={({ pressed }) => [styles.ingMain, pressed && styles.ingPressed]}
+        >
+          <Ionicons
+            name={line.checked ? 'checkmark-circle' : line.item_id ? 'cube-outline' : 'create-outline'}
+            size={20}
+            color={line.checked ? colors.ok : line.item_id ? colors.accent : colors.muted}
+          />
+          <View style={styles.flex}>
+            <Text style={[type.body, line.checked && styles.done]}>{line.name}</Text>
+            <Text style={type.caption}>
+              {line.checked ? 'Già comprato' : where}
+              {line.note ? ` · ${line.note}` : ''}
+            </Text>
+            {shared && (
+              <Text style={styles.shared}>
+                In lista {qtyWithUnit(line.qty, line.unit)} in tutto, serve anche ad altri piatti
+              </Text>
+            )}
+          </View>
+        </Pressable>
+        {line.checked ? (
+          <Text style={styles.qty}>{qtyWithUnit(ing.qty, line.unit)}</Text>
+        ) : (
+          <>
+            <Pressable
+              onPress={() => (ing.qty - step > 0 ? onChange(roundQty(ing.qty - step)) : onRemove())}
+              accessibilityLabel={
+                ing.qty - step > 0 ? `Togli ${formatQty(step)} ${line.unit}` : 'Togli ingrediente'
+              }
+              style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}
+            >
+              <Ionicons
+                name={ing.qty - step > 0 ? 'remove' : 'trash-outline'}
+                size={18}
+                color={ing.qty - step > 0 ? colors.text : colors.warn}
+              />
+            </Pressable>
+            <Pressable
+              onPress={startEdit}
+              accessibilityLabel={`Scrivi la quantità di ${line.name}`}
+              style={({ pressed }) => [styles.qtyBox, pressed && styles.ingPressed]}
+            >
+              <Text style={styles.qty}>{formatQty(ing.qty)}</Text>
+              <Text style={styles.unit}>{unitWord(ing.qty, line.unit)}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onChange(roundQty(ing.qty + step))}
+              accessibilityLabel={`Aggiungi ${formatQty(step)} ${line.unit}`}
+              style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}
+            >
+              <Ionicons name="add" size={18} color={colors.text} />
+            </Pressable>
+          </>
         )}
       </View>
-      {line.checked ? (
-        <Text style={styles.qty}>{qtyWithUnit(ing.qty, line.unit)}</Text>
-      ) : (
+
+      {editing && (
         <>
-          <Pressable
-            onPress={() => (ing.qty - step > 0 ? onChange(roundQty(ing.qty - step)) : onRemove())}
-            accessibilityLabel={
-              ing.qty - step > 0 ? `Togli ${formatQty(step)} ${line.unit}` : 'Togli ingrediente'
-            }
-            style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}
-          >
-            <Ionicons
-              name={ing.qty - step > 0 ? 'remove' : 'trash-outline'}
-              size={18}
-              color={ing.qty - step > 0 ? colors.text : colors.warn}
-            />
-          </Pressable>
-          <View style={styles.qtyBox}>
-            <Text style={styles.qty}>{formatQty(ing.qty)}</Text>
-            <Text style={styles.unit}>{unitWord(ing.qty, line.unit)}</Text>
+          <View style={styles.editBox}>
+            <View style={styles.editField}>
+              <TextInput
+                value={text}
+                onChangeText={(t) => {
+                  setText(t);
+                  setBad(false);
+                }}
+                autoFocus
+                selectTextOnFocus
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                onSubmitEditing={confirmEdit}
+                accessibilityLabel={`Quantità di ${line.name}`}
+                style={styles.editInput}
+              />
+              <Text style={styles.editUnit}>{line.unit}</Text>
+            </View>
+            <Pressable onPress={() => setEditing(false)} style={styles.editCancel} hitSlop={6}>
+              <Text style={styles.editCancelText}>Annulla</Text>
+            </Pressable>
+            <Pressable
+              onPress={confirmEdit}
+              style={({ pressed }) => [styles.editSave, pressed && styles.ingPressed]}
+            >
+              <Text style={styles.editSaveText}>OK</Text>
+            </Pressable>
           </View>
-          <Pressable
-            onPress={() => onChange(roundQty(ing.qty + step))}
-            accessibilityLabel={`Aggiungi ${formatQty(step)} ${line.unit}`}
-            style={({ pressed }) => [styles.step, pressed && styles.stepPressed]}
-          >
-            <Ionicons name="add" size={18} color={colors.text} />
-          </Pressable>
+          {bad && <Text style={styles.editError}>Scrivi un numero, per esempio 8 o 2,5.</Text>}
         </>
       )}
     </View>

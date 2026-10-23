@@ -170,6 +170,17 @@ export default function DettaglioOggetto() {
           <Ionicons name="chevron-down" size={22} color={colors.accent} />
           <Text style={styles.backText}>Chiudi</Text>
         </Pressable>
+        {isConsigliere && (
+          <Pressable
+            onPress={() => router.push({ pathname: '/oggetto/modifica/[id]', params: { id: it.id } })}
+            style={styles.edit}
+            hitSlop={8}
+            accessibilityRole="button"
+          >
+            <Ionicons name="create-outline" size={20} color={colors.accent} />
+            <Text style={styles.backText}>Modifica</Text>
+          </Pressable>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>

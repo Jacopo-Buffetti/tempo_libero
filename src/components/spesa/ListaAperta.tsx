@@ -147,16 +147,19 @@ export function ListaAperta({ list }: { list: ListSummary }) {
     });
   }
 
-  function openNew(params: {
-    mode: 'inventory' | 'new-product' | 'list-only';
-    name: string;
-    itemId?: string;
-  }) {
+  function openNew(params: { mode: 'inventory' | 'list-only'; name: string; itemId?: string }) {
+    const canCreate = params.mode === 'list-only' && isConsigliere && !exactExists;
     setText('');
     setAddError(null);
     router.push({
       pathname: '/spesa/voce',
-      params: { listId, location, locations: locations.join(','), ...params },
+      params: {
+        listId,
+        location,
+        locations: locations.join(','),
+        ...params,
+        ...(canCreate ? { canCreate: '1' } : {}),
+      },
     });
   }
 
@@ -301,10 +304,7 @@ export function ListaAperta({ list }: { list: ListSummary }) {
                 term &&
                 (matches[0]
                   ? openNew({ mode: 'inventory', itemId: matches[0].id, name: matches[0].name })
-                  : openNew({
-                      mode: exactExists || !isConsigliere ? 'list-only' : 'new-product',
-                      name: term,
-                    }))
+                  : openNew({ mode: 'list-only', name: term }))
               }
               style={styles.addInput}
             />
@@ -326,20 +326,11 @@ export function ListaAperta({ list }: { list: ListSummary }) {
                   onPress={() => openNew({ mode: 'inventory', itemId: s.id, name: s.name })}
                 />
               ))}
-              {!exactExists && isConsigliere && (
-                <Option
-                  icon="add-circle-outline"
-                  iconColor={colors.accent}
-                  title={`Nuovo prodotto: “${term}”`}
-                  hint="anche in inventario"
-                  onPress={() => openNew({ mode: 'new-product', name: term })}
-                />
-              )}
               <Option
-                icon="create-outline"
-                iconColor={colors.muted}
-                title={`Solo in lista: “${term}”`}
-                hint="non va in inventario"
+                icon="add-circle-outline"
+                iconColor={colors.accent}
+                title={`Aggiungi “${term}”`}
+                hint="nuova voce"
                 onPress={() => openNew({ mode: 'list-only', name: term })}
               />
             </View>
@@ -453,9 +444,7 @@ export function ListaAperta({ list }: { list: ListSummary }) {
               style={({ pressed }) => [styles.registerButton, pressed && styles.registerPressed]}
             >
               <Ionicons name="wallet-outline" size={18} color={colors.onAccent} />
-              <Text style={styles.registerText}>
-                Aggiungi pagamento · {unregistered} da attribuire
-              </Text>
+              <Text style={styles.registerText}>Aggiungi pagamento · {unregistered} da attribuire</Text>
             </Pressable>
           ) : (
             <Text style={[type.caption, styles.footerHint]}>

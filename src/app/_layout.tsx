@@ -40,6 +40,7 @@ function RootNavigator() {
           <Stack.Screen name="nuovo-oggetto" options={{ presentation: 'modal' }} />
           <Stack.Screen name="ricerca" options={{ animation: 'fade' }} />
           <Stack.Screen name="oggetto/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="oggetto/modifica/[id]" options={{ presentation: 'modal' }} />
           <Stack.Screen name="inventario/dati" options={{ presentation: 'modal' }} />
           <Stack.Screen name="spesa/nuova" options={{ presentation: 'modal' }} />
           <Stack.Screen name="spesa/[id]" />
