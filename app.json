@@ -8,7 +8,12 @@
     "scheme": "tempolibero",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "supportsTablet": false,
+      "bundleIdentifier": "it.tempoliberovigne.app",
+      "icon": "./assets/images/icon.png",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +22,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.jachepe23.tempo_libero"
+      "package": "com.jachepe23.tempo_libero",
+      "permissions": [
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "single",

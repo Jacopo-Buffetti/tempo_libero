@@ -1,10 +1,10 @@
-import { Share } from 'react-native';
-import * as Sharing from 'expo-sharing';
-import { File, Paths } from 'expo-file-system';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as Haptics from 'expo-haptics';
-import { supabase } from '@/lib/supabase';
 import { addMonths, dateOf, isoOf, monthRange, monthTitle } from '@/lib/calendario';
+import { supabase } from '@/lib/supabase';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { File, Paths } from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
+import * as Sharing from 'expo-sharing';
+import { Share } from 'react-native';
 
 export type Person = {
   id: string;
@@ -116,9 +116,12 @@ export function planShifts(people: Person[], from: string, to: string, history: 
     const cap = Math.ceil(openDaysInMonth(iso) / people.length);
     const hard = isHardDay(iso);
     const friday = d.getDay() === 5;
-    const yesterday = previous && daysBetween(previous.shift_date, iso) === 1 ? previous.person_id : null;
+    const yesterday: string | null =
+    previous !== null && daysBetween(previous.shift_date, iso) === 1
+    ? previous.person_id
+    : null;
 
-    let pool = people.filter((p) => p.id !== yesterday);
+    let pool: Person[] = people.filter((p: Person) => p.id !== yesterday);
     const underCap = pool.filter((p) => (monthCount.get(p.id) ?? 0) < cap);
     if (underCap.length) pool = underCap;
     if (!pool.length) pool = people;
@@ -131,14 +134,17 @@ export function planShifts(people: Person[], from: string, to: string, history: 
         ? [t.hard, friday ? t.fri : t.sun, m, t.total, -since(t.lastHard), -since(t.lastAny), p.position]
         : [m, t.total, -since(t.lastAny), p.position];
     };
-    const chosen = pool
+    const chosen: Person = pool
       .map((p) => ({ p, k: key(p) }))
       .sort((a, b) => {
         for (let i = 0; i < a.k.length; i++) if (a.k[i] !== b.k[i]) return a.k[i] - b.k[i];
         return 0;
       })[0].p;
 
-    const shift = { shift_date: iso, person_id: chosen.id };
+    const shift: Pick<ShiftRow, 'shift_date' | 'person_id'> = {
+      shift_date: iso,
+      person_id: chosen.id,
+    };
     planned.push(shift);
     count(shift, true);
     monthCount.set(chosen.id, (monthCount.get(chosen.id) ?? 0) + 1);

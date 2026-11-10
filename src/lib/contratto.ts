@@ -1,18 +1,26 @@
-import type { Sex } from '@/lib/codiceFiscale';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import { File, Paths } from 'expo-file-system';
-import { decode } from 'base64-arraybuffer';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as Haptics from 'expo-haptics';
-import { supabase } from '@/lib/supabase';
-import { dateOf } from '@/lib/calendario';
-import { formatEuro, parseEuro } from '@/lib/spesa';
 import { shortTime, type Rental } from '@/lib/affitti';
-import { LOGO_PROLOCO_DATA_URI } from '@/lib/logoProloco';
+import { dateOf } from '@/lib/calendario';
+import type { Sex } from '@/lib/codiceFiscale';
+import type { ParkContractData } from '@/lib/contrattoParco';
+import type { Database } from '@/lib/database.types';
 import { FIRMA_PRESIDENTE_DATA_URI } from '@/lib/firmaPresidente';
+import { LOGO_PROLOCO_DATA_URI } from '@/lib/logoProloco';
+import { formatEuro, parseEuro } from '@/lib/spesa';
+import { supabase } from '@/lib/supabase';
 import { TIMBRO_PROLOCO_DATA_URI } from '@/lib/timbroProloco';
 import { palette } from '@/theme/tokens';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { decode } from 'base64-arraybuffer';
+import { File, Paths } from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+
+type RentalContractUpdate =
+  Database['public']['Tables']['rental_contracts']['Update'];
+
+type ClientUpdate =
+  Database['public']['Tables']['clients']['Update'];
 
 export const ASSOCIATION = {
   name: 'Pro Loco Tempo Libero Vigne APS',
@@ -180,21 +188,19 @@ export function useSaveContract(rentalId?: string) {
   return useMutation({
     mutationFn: async (v: {
       id: string;
-      contract?: object;
+      contract?: ContractData | ParkContractData;
       handover?: HandoverData;
       clientId?: string;
       clientPatch?: Record<string, string | null | undefined>;
     }) => {
-      const changes: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      const changes: RentalContractUpdate = {updated_at: new Date().toISOString(),};
       if (v.contract) changes.contract = v.contract;
       if (v.handover) changes.handover = v.handover;
       const { error } = await supabase.from('rental_contracts').update(changes).eq('id', v.id);
       if (error) throw error;
 
       if (v.clientId && v.clientPatch) {
-        const patch = Object.fromEntries(
-          Object.entries(v.clientPatch).filter(([, value]) => value !== undefined),
-        );
+        const patch: ClientUpdate = Object.fromEntries(Object.entries(v.clientPatch).filter(([, value]) => value !== undefined),);
         if (Object.keys(patch).length) {
           const { error: clientError } = await supabase.from('clients').update(patch).eq('id', v.clientId);
           if (clientError) throw clientError;

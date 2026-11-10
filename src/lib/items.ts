@@ -1,7 +1,7 @@
+import type { Database } from '@/lib/database.types';
+import { supabase } from '@/lib/supabase';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
-import { supabase } from '@/lib/supabase';
-import type { Database } from '@/lib/database.types';
 
 export type Location = Database['public']['Enums']['item_location'];
 export type Kind = Database['public']['Enums']['item_kind'];
@@ -117,7 +117,7 @@ function useItemRpc(
     onMutate: async ({ id, delta }) => {
       await queryClient.cancelQueries({ queryKey: itemsKeys.all });
       const snapshot = queryClient.getQueriesData<unknown>({ queryKey: itemsKeys.all });
-      queryClient.setQueriesData<unknown>({ queryKey: itemsKeys.all }, (old) => {
+      queryClient.setQueriesData<unknown>({ queryKey: itemsKeys.all }, (old: unknown) => {
         if (Array.isArray(old)) {
           return (old as Item[]).map((i) => (i.id === id ? patch(i, delta) : i));
         }

@@ -1,2 +1,4 @@
 allowBuilds:
+  dtrace-provider: false
+  protobufjs: true
   unrs-resolver: true

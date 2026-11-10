@@ -45,29 +45,23 @@ Deno.serve(async (req) => {
   if (!memberships?.length) {
     return json({ error: 'Il tuo account non risulta iscritto a nessuna associazione' }, 403);
   }
-  const me = memberships.find((m) => m.role === 'admin');
-  if (!me) {
-    return json(
-      { error: `Solo un amministratore può gestire gli account (il tuo ruolo è: ${memberships[0].role})` },
-      403,
-    );
+  const body = await req.json().catch(() => ({}));
+
+  const requestedOrgId = String(body.org_id ?? '');
+
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedOrgId)) {
+    return json({ error: 'Associazione non valida' }, 400);
   }
+
+  const me = memberships.find((m) => m.org_id === requestedOrgId && m.role === 'admin');
+
+  if (!me) {
+    return json({ error: 'Non sei amministratore dell’associazione richiesta' }, 403);
+  }
+
   const orgId = me.org_id as string;
 
-  const body = await req.json().catch(() => ({}));
   const action = body.action as string;
-
-  const linkShift = async (userId: string, personId: string | null | undefined, role: string) => {
-    await admin.from('shift_people').update({ user_id: null }).eq('org_id', orgId).eq('user_id', userId);
-    if (role !== 'volontario' && personId) {
-      const { error } = await admin
-        .from('shift_people')
-        .update({ user_id: userId })
-        .eq('org_id', orgId)
-        .eq('id', personId);
-      if (error) throw new Error('Questo consigliere è già collegato a un altro account');
-    }
-  };
 
   const ownTarget = async (userId: string) => {
     const { data } = await admin
@@ -83,7 +77,9 @@ Deno.serve(async (req) => {
 
   try {
     if (action === 'crea') {
-      const email = String(body.email ?? '').trim().toLowerCase();
+      const email = String(body.email ?? '')
+        .trim()
+        .toLowerCase();
       const name = String(body.display_name ?? '').trim();
       const role = String(body.role ?? 'volontario');
       if (!/^\S+@\S+\.\S+$/.test(email)) return json({ error: 'Email non valida' }, 400);
@@ -91,13 +87,29 @@ Deno.serve(async (req) => {
       if (!ROLES.includes(role)) return json({ error: 'Ruolo non valido' }, 400);
 
       let userId: string | null = null;
-      const { data: existing } = await admin.rpc('user_id_by_email', { p_email: email });
+      const { data: existing, error: lookupError } = await admin.rpc('user_id_by_email', {
+        p_email: email,
+      });
+
+      if (lookupError) {
+        console.error('Errore durante la verifica dell’email:', lookupError.message);
+        return json({ error: 'Impossibile verificare l’indirizzo email' }, 500);
+      }
       if (existing) {
-        userId = existing as string;
+        return json(
+          {
+            error:
+              'Questo indirizzo email è già associato a un account. Non è possibile aggiungerlo automaticamente a un’altra associazione.',
+          },
+          409,
+        );
       } else {
         const { data: created, error } = await admin.auth.admin.createUser({ email, email_confirm: true });
         if (error || !created.user) {
-          return json({ error: `Non riesco a creare l’account: ${error?.message ?? 'errore sconosciuto'}` }, 500);
+          return json(
+            { error: `Non riesco a creare l’account: ${error?.message ?? 'errore sconosciuto'}` },
+            500,
+          );
         }
         userId = created.user.id;
       }
@@ -110,14 +122,37 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (already) return json({ error: 'Questa persona fa già parte dell’associazione' }, 409);
 
-      const { error: memberError } = await admin
-        .from('members')
-        .insert({ org_id: orgId, user_id: userId, role, display_name: name, email, created_by: callerId });
+      const { error: memberError } = await admin.rpc('save_member_with_shift', {
+        p_org_id: orgId,
+        p_user_id: userId,
+        p_role: role,
+        p_display_name: name,
+        p_email: email,
+        p_created_by: callerId,
+        p_shift_person_id: body.shift_person_id || null,
+        p_is_new: true,
+      });
+
       if (memberError) {
-        return json({ error: `Non riesco ad aggiungerlo all’associazione: ${memberError.message}` }, 500);
+        const { error: cleanupError } = await admin.auth.admin.deleteUser(userId);
+
+        if (cleanupError) {
+          console.error('Impossibile eliminare l’account appena creato:', {
+            userId,
+            error: cleanupError.message,
+          });
+        }
+
+        return json(
+          {
+            error: cleanupError
+              ? 'Creazione non completata. Contatta l’amministratore prima di riprovare.'
+              : `Non riesco ad aggiungere l'account: ${memberError.message}`,
+          },
+          500,
+        );
       }
 
-      await linkShift(userId, body.shift_person_id, role);
       return json({ ok: true });
     }
 
@@ -126,11 +161,22 @@ Deno.serve(async (req) => {
       await ownTarget(userId);
       const role = String(body.role ?? '');
       if (!ROLES.includes(role)) return json({ error: 'Ruolo non valido' }, 400);
-      const changes: Record<string, string> = { role };
-      if (typeof body.display_name === 'string' && body.display_name.trim()) changes.display_name = body.display_name.trim();
-      const { error } = await admin.from('members').update(changes).eq('org_id', orgId).eq('user_id', userId);
-      if (error) return json({ error: 'Modifica non riuscita' }, 500);
-      await linkShift(userId, body.shift_person_id, role);
+
+      const { error } = await admin.rpc('save_member_with_shift', {
+        p_org_id: orgId,
+        p_user_id: userId,
+        p_role: role,
+        p_display_name: typeof body.display_name === 'string' ? body.display_name.trim() : null,
+        p_email: null,
+        p_created_by: callerId,
+        p_shift_person_id: body.shift_person_id || null,
+        p_is_new: false,
+      });
+
+      if (error) {
+        return json({ error: `Modifica non riuscita: ${error.message}` }, 500);
+      }
+
       return json({ ok: true });
     }
 
@@ -138,14 +184,45 @@ Deno.serve(async (req) => {
       const userId = String(body.user_id ?? '');
       if (userId === callerId) return json({ error: 'Non puoi eliminare il tuo account' }, 400);
       await ownTarget(userId);
-      await admin.from('shift_people').update({ user_id: null }).eq('org_id', orgId).eq('user_id', userId);
-      const { error } = await admin.from('members').delete().eq('org_id', orgId).eq('user_id', userId);
-      if (error) return json({ error: 'Eliminazione non riuscita' }, 500);
-      const { count } = await admin
+
+      const { error } = await admin.rpc('delete_member_with_shift', {
+        p_org_id: orgId,
+        p_user_id: userId,
+        p_created_by: callerId,
+      });
+
+      if (error) {
+        return json({ error: `Eliminazione non riuscita: ${error.message}` }, 500);
+      }
+
+      const { count, error: countError } = await admin
         .from('members')
         .select('user_id', { count: 'exact', head: true })
         .eq('user_id', userId);
-      if (!count) await admin.auth.admin.deleteUser(userId);
+
+      if (count === null) {
+        return json({ error: 'Impossibile verificare le associazioni residue dell’account' }, 500);
+      }
+
+      if (count === 0) {
+        const { error: authError } = await admin.auth.admin.deleteUser(userId);
+
+        if (authError) {
+          console.error('Errore eliminazione utente Supabase Auth:', {
+            userId,
+            error: authError.message,
+          });
+
+          return json(
+            {
+              error:
+                'Il membro è stato rimosso dall’associazione, ma non è stato possibile eliminare il suo account di accesso.',
+            },
+            500,
+          );
+        }
+      }
+
       return json({ ok: true });
     }
 

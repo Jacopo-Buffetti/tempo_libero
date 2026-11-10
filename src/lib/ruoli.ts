@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth, useMembership } from '@/providers/AuthProvider';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export type Role = 'admin' | 'consigliere' | 'volontario';
 
@@ -107,12 +107,27 @@ export type MemberInput =
   | { action: 'modifica'; user_id: string; display_name: string; role: Role; shift_person_id: string | null }
   | { action: 'elimina'; user_id: string };
 
+
 export function useManageMember() {
   const queryClient = useQueryClient();
+  const { orgId } = useRole();
+
   return useMutation({
     mutationFn: async (input: MemberInput) => {
-      const { error } = await supabase.functions.invoke('gestisci-membri', { body: input });
-      if (error) throw new Error(await readFunctionError(error));
+      if (!orgId) {
+        throw new Error('Associazione non selezionata');
+      }
+
+      const { error } = await supabase.functions.invoke('gestisci-membri', {
+        body: {
+          ...input,
+          org_id: orgId,
+        },
+      });
+
+      if (error) {
+        throw new Error(await readFunctionError(error));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ruoli'] });
@@ -120,3 +135,4 @@ export function useManageMember() {
     },
   });
 }
+
