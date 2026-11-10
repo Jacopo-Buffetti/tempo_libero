@@ -43,11 +43,12 @@ export type Rental = {
   deposit_paid: boolean;
   balance_paid: boolean;
   notes: string | null;
+  closed_at: string | null;
   clients: Pick<Client, 'id' | 'first_name' | 'last_name' | 'phone'> | null;
 };
 
 const RENTAL_COLUMNS =
-  'id, space, client_id, rent_date, end_date, start_time, end_time, price_cents, deposit_cents, deposit_paid, balance_paid, notes, clients(id, first_name, last_name, phone)';
+  'id, space, client_id, rent_date, end_date, start_time, end_time, price_cents, deposit_cents, deposit_paid, balance_paid, notes, closed_at, clients(id, first_name, last_name, phone)';
 
 export const affittiKeys = {
   all: ['affitti'] as const,
@@ -249,7 +250,7 @@ export function useDeleteClient() {
   });
 }
 
-export type RentalInput = Omit<Rental, 'id' | 'clients'>;
+export type RentalInput = Omit<Rental, 'id' | 'clients' | 'closed_at'>;
 
 export function useSaveRental(orgId?: string) {
   const invalidate = useInvalidateAffitti();
@@ -283,6 +284,29 @@ export function useDeleteRental() {
       const { error } = await supabase.from('rentals').delete().eq('id', id);
       if (error) throw error;
       await Promise.all([removeDocumentFiles(documents), removeSignedFiles(signed)]);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+/** Chiusura gestita dal server: verifica permessi, blocca nuovi upload, elimina i file e finalizza. */
+export function useCloseRental() {
+  const invalidate = useInvalidateAffitti();
+  return useMutation({
+    mutationFn: async (rentalId: string) => {
+      const { data, error } = await supabase.functions.invoke('chiudi-pratica-affitto', {
+        body: { rentalId },
+      });
+      if (error) {
+        // FunctionsHttpError può includere un messaggio più utile nella risposta HTTP.
+        let message = 'Chiusura non completata. Riprova: i documenti non ancora rimossi resteranno associati alla pratica.';
+        try {
+          const details = await (error as { context?: Response }).context?.json();
+          if (typeof details?.error === 'string') message = details.error;
+        } catch { /* Mantiene il messaggio generico. */ }
+        throw new Error(message);
+      }
+      if (data?.ok !== true) throw new Error(data?.error ?? 'Chiusura non confermata dal server.');
     },
     onSuccess: invalidate,
   });

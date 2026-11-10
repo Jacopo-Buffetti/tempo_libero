@@ -88,7 +88,10 @@ export async function rentalDocumentPaths(rentalId: string) {
 }
 
 export async function removeDocumentFiles(paths: string[]) {
-  if (paths.length > 0) await supabase.storage.from(BUCKET).remove(paths);
+  if (paths.length > 0) {
+    const { error } = await supabase.storage.from(BUCKET).remove(paths);
+    if (error) throw error;
+  }
 }
 
 export function useAddRentalDocument(orgId?: string, rentalId?: string) {

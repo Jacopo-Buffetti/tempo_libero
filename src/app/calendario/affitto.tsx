@@ -24,6 +24,7 @@ import {
   spaceLabel,
   useClients,
   useDeleteRental,
+  useCloseRental,
   useRental,
   useRentals,
   useSaveClient,
@@ -62,6 +63,8 @@ export default function Affitto() {
   const saveRental = useSaveRental(orgId);
   const saveClient = useSaveClient(orgId);
   const remove = useDeleteRental();
+  const closeRental = useCloseRental();
+  const [closingRental, setClosingRental] = useState(false);
 
   const [space, setSpace] = useState<Space>('stanza');
   const [date, setDate] = useState<string | null>(params.date ?? todayIso());
@@ -176,6 +179,39 @@ export default function Affitto() {
         onPress: () => remove.mutate(params.id!, { onSuccess: () => router.back() }),
       },
     ]);
+  }
+
+  function confirmClose() {
+    if (!params.id || !rental.data || rental.data.closed_at || closingRental) return;
+    const r = rental.data;
+    const now = new Date();
+    const end = new Date(`${r.end_date}T${r.end_time ?? '23:59:59'}`);
+    if (now < end) {
+      Alert.alert('Affitto non terminato', 'La pratica può essere chiusa solo dopo la fine della concessione.');
+      return;
+    }
+    Alert.alert(
+      'Chiudere la pratica?',
+      'Conferma solo dopo la riconsegna e la verifica dei documenti firmati. Le fotografie dei documenti d’identità saranno eliminate definitivamente da Supabase. Contratti e verbali firmati rimarranno conservati. Eventuali copie nella galleria del telefono non verranno eliminate.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Chiudi pratica',
+          style: 'destructive',
+          onPress: async () => {
+            setClosingRental(true);
+            try {
+              await closeRental.mutateAsync(params.id!);
+              Alert.alert('Pratica chiusa', 'La pratica è stata chiusa e i documenti d’identità associati sono stati rimossi da Supabase.');
+            } catch (e) {
+              Alert.alert('Chiusura non completata', errorMessage(e, 'Verifica i permessi e riprova.'));
+            } finally {
+              setClosingRental(false);
+            }
+          },
+        },
+      ],
+    );
   }
 
   if (!ready) {
@@ -444,7 +480,9 @@ export default function Affitto() {
 
           <View style={styles.field}>
             {isEdit ? (
-              <DocumentoCliente orgId={orgId} rentalId={params.id!} />
+              rental.data?.closed_at ? (
+                <Text style={type.caption}>Pratica chiusa: non è possibile caricare altri documenti d’identità.</Text>
+              ) : <DocumentoCliente orgId={orgId} rentalId={params.id!} />
             ) : (
               <>
                 <Text style={type.label}>Documento d’identità</Text>
@@ -521,6 +559,25 @@ export default function Affitto() {
             </View>
           )}
 
+          {isEdit && rental.data?.closed_at && (
+            <View style={styles.field}>
+              <Text style={type.label}>Pratica chiusa</Text>
+              <Text style={type.caption}>Le fotografie dei documenti d’identità non sono più necessarie. Contratti e verbali firmati restano disponibili.</Text>
+            </View>
+          )}
+          {isEdit && !rental.data?.closed_at && (membership.data?.role === 'admin' || membership.data?.role === 'consigliere') && (
+            <Pressable
+              onPress={confirmClose}
+              disabled={closingRental || closeRental.isPending}
+              style={({ pressed }) => [styles.docButton, pressed && styles.pressed]}
+            >
+              <Ionicons name="checkmark-circle-outline" size={22} color={colors.accent} />
+              <View style={styles.flex}>
+                <Text style={type.body}>{closingRental ? 'Chiusura in corso…' : 'Chiudi pratica e cancella documenti d’identità'}</Text>
+                <Text style={type.caption}>Disponibile dopo la fine della concessione, per sala e Parco Granaccioli.</Text>
+              </View>
+            </Pressable>
+          )}
           {error && <Text style={styles.warn}>{error}</Text>}
 
           {isEdit && (

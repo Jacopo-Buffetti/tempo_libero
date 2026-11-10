@@ -1,0 +1,27 @@
+PATCH SICUREZZA CHIUSURA AFFITTI — Tempo Libero Vigne
+
+Questa patch sostituisce la cancellazione dal telefono con una Edge Function.
+Il server verifica l'utente tramite JWT, controlla permessi e fine concessione tramite RPC,
+blocca nuovi caricamenti, elimina i file Storage e infine chiude la pratica.
+Se Storage fallisce, la pratica NON risulta chiusa e si può riprovare.
+
+INSTALLAZIONE (solo dopo backup/controllo git status):
+cd ~/Progetti/Personali/tempo_libero
+git status --short
+unzip -o ~/Scaricati/tempo-libero-chiusura-sicura.zip -d .
+pnpm exec tsc --noEmit
+git diff --check
+
+DATABASE (verificare che sia proposta solo la migration 20261110170000):
+pnpm exec supabase db push --remote
+
+EDGE FUNCTION:
+pnpm exec supabase functions deploy chiudi-pratica-affitto --remote=zersjkwyuxjyvivejrxg
+
+IMPORTANTE: non provare su documenti reali. Il flusso elimina file in modo irreversibile.
+L'operazione non elimina copie in galleria/backup. La policy Storage blocca i nuovi upload
+per affitti in chiusura o chiusi; il server finalizza soltanto dopo l'esito positivo di Storage.
+La funzione precedente close_rental_and_purge_documents viene disabilitata per gli utenti.
+
+ATTENZIONE: se una richiesta viene interrotta, una pratica puo' restare in closing_at;
+ripremere Chiudi pratica per completare. I file gia' eliminati non sono ripristinabili.

@@ -42,6 +42,7 @@ export default function Impostazioni() {
   const [remindersError, setRemindersError] = useState(false);
   const [calendarCount, setCalendarCount] = useState<number | null>(null);
   const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [requestingDeletion, setRequestingDeletion] = useState(false);
 
   useEffect(() => {
     permissionState().then(setPermission);
@@ -106,6 +107,40 @@ export default function Impostazioni() {
         'In Expo Go questo telefono non permette di programmare le notifiche. Funzioneranno con l’app installata.',
       );
     }
+  }
+
+  async function submitDeletionRequest() {
+    if (requestingDeletion) return;
+    setRequestingDeletion(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('richiedi-cancellazione', {
+        body: {},
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      Alert.alert(
+        'Richiesta ricevuta',
+        'La tua richiesta è stata registrata e inviata all’amministratore. Il tuo account rimane attivo fino alla cancellazione da parte del Presidente.',
+      );
+    } catch {
+      Alert.alert(
+        'Invio non riuscito',
+        'Non è stato possibile completare la richiesta. Riprova oppure scrivi a prolocotempoliberovigne@gmail.com.',
+      );
+    } finally {
+      setRequestingDeletion(false);
+    }
+  }
+
+  function confirmDeletionRequest() {
+    Alert.alert(
+      'Richiedere la cancellazione?',
+      'La richiesta sarà inviata al Presidente della Pro Loco. L’account non verrà eliminato immediatamente.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        { text: 'Invia richiesta', style: 'destructive', onPress: () => void submitDeletionRequest() },
+      ],
+    );
   }
 
   function logout() {
@@ -356,6 +391,25 @@ export default function Impostazioni() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
+          <Pressable
+            onPress={confirmDeletionRequest}
+            disabled={requestingDeletion}
+            accessibilityRole="button"
+            accessibilityLabel="Richiedi cancellazione account"
+            style={({ pressed }) => [styles.logout, (pressed || requestingDeletion) && styles.pressed]}
+          >
+            {requestingDeletion ? (
+              <ActivityIndicator size="small" color={colors.warn} />
+            ) : (
+              <Ionicons name="trash-outline" size={20} color={colors.warn} />
+            )}
+            <Text style={styles.logoutText}>
+              {requestingDeletion ? 'Invio richiesta…' : 'Richiedi cancellazione account'}
+            </Text>
+          </Pressable>
+          <Text style={type.caption}>
+            La richiesta viene inviata al Presidente. Il tuo account resterà attivo fino alla sua cancellazione.
+          </Text>
           <Pressable onPress={logout} style={({ pressed }) => [styles.logout, pressed && styles.pressed]}>
             <Ionicons name="log-out-outline" size={20} color={colors.warn} />
             <Text style={styles.logoutText}>Esci dall’account</Text>
